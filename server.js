@@ -44,7 +44,7 @@ app.post('/login', (req, res) => {
 
 // 글쓰기 페이지
 app.get('/', (req, res) => {
-  res.render('index', { title: config.title });
+  res.redirect('/login');
 });
 
 // 글 제출
