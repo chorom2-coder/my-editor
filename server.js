@@ -4,7 +4,9 @@ const bodyParser = require('body-parser');
 const path = require('path');
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
+
+let isLoggedIn = false;
 
 // Static & view engine
 app.use(express.static('public'));
@@ -27,7 +29,7 @@ if (fs.existsSync(dataPath)) {
   fs.writeFileSync(dataPath, JSON.stringify(submissions, null, 2));
 }
 
-// 로그인 화면
+// 로그인 페이지
 app.get('/login', (req, res) => {
   res.render('login', { error: null });
 });
@@ -35,7 +37,9 @@ app.get('/login', (req, res) => {
 // 로그인 처리
 app.post('/login', (req, res) => {
   const { id, pw } = req.body;
+
   if (id === 'admin' && pw === 'test') {
+    isLoggedIn = true;
     res.redirect('/');
   } else {
     res.render('login', { error: 'ID 또는 PW가 틀렸습니다.' });
@@ -44,20 +48,28 @@ app.post('/login', (req, res) => {
 
 // 글쓰기 페이지
 app.get('/', (req, res) => {
-  res.redirect('/login');
+  if (!isLoggedIn) {
+    return res.redirect('/login');
+  }
+  res.render('index', { title: config.title });
 });
 
 // 글 제출
 app.post('/submit', (req, res) => {
   const content = req.body.content || '';
   const entry = { content, date: new Date().toLocaleString() };
+
   submissions.push(entry);
   fs.writeFileSync(dataPath, JSON.stringify(submissions, null, 2));
+
   res.send('제출 완료!');
 });
 
 // 관리자 페이지
 app.get('/admin', (req, res) => {
+  if (!isLoggedIn) {
+    return res.redirect('/login');
+  }
   res.render('admin', { submissions });
 });
 
