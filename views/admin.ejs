@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head><meta charset="UTF-8"><title>관리자</title></head>
+<body>
+<h1>제출 글 관리</h1>
+<ul>
+<% submissions.forEach(sub => { %>
+  <li><%= sub.date %> - <%= sub.content %></li>
+<% }) %>
+</ul>
+</body>
+</html>
