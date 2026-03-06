@@ -10,6 +10,7 @@
     "body-parser": "^2.2.2",
     "ejs": "^4.0.1",
     "express": "^4.22.1",
-    "express-session": "^1.19.0"
+    "express-session": "^1.19.0",
+    "json2csv": "^6.0.0-alpha.2"
   }
 }
