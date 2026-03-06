@@ -1,13 +1,30 @@
 <!DOCTYPE html>
 <html lang="ko">
-<head><meta charset="UTF-8"><title>로그인</title></head>
+<head>
+<meta charset="UTF-8">
+<title>글쓰기 진단평가</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+
 <body>
-  <h1>로그인</h1>
-  <% if (error) { %><p style="color:red"><%= error %></p><% } %>
-  <form method="post" action="/login">
-    ID: <input type="text" name="id"><br>
-    PW: <input type="password" name="pw"><br>
-    <button type="submit">로그인</button>
-  </form>
+
+<div class="login-box">
+
+<h1>글쓰기 진단평가</h1>
+
+<form method="post" action="/login">
+
+<label>이름</label>
+<input type="text" name="name" required>
+
+<label>학번</label>
+<input type="text" name="studentId" required>
+
+<button type="submit">시험 시작</button>
+
+</form>
+
+</div>
+
 </body>
 </html>

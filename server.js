@@ -39,15 +39,19 @@ app.get('/login', (req, res) => {
 });
 
 // 로그인 처리
-app.post('/login', (req, res) => {
-  const { id, pw } = req.body;
+let currentUser = null;
 
-  if (id === 'admin' && pw === 'test') {
-    isLoggedIn = true;
-    res.redirect('/');
-  } else {
-    res.render('login', { error: 'ID 또는 PW가 틀렸습니다.' });
-  }
+app.post('/login', (req, res) => {
+  const { name, studentId } = req.body;
+
+  currentUser = {
+    name,
+    studentId
+  };
+
+  isLoggedIn = true;
+
+  res.redirect('/');
 });
 
 // 글쓰기 페이지
@@ -66,14 +70,13 @@ app.post('/submit', (req, res) => {
   }
 
   const content = req.body.content || '';
-<<<<<<< HEAD
+
   const entry = {
+    name: currentUser.name,
+    studentId: currentUser.studentId,
     content,
     date: new Date().toLocaleString()
   };
-=======
-  const entry = { content, date: new Date().toLocaleString() };
->>>>>>> dbfcb2bb5ac689bfd01c80f96e6d58ac8ef0a1be
 
   submissions.push(entry);
   fs.writeFileSync(dataPath, JSON.stringify(submissions, null, 2));
