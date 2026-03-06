@@ -1,26 +1,62 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html>
 <head>
 <meta charset="UTF-8">
-<title>글쓰기 진단평가</title>
-<link rel="stylesheet" href="/style.css">
+<title><%= title %></title>
+
+<style>
+
+body{
+font-family:Arial;
+background:#f5f6fa;
+display:flex;
+justify-content:center;
+align-items:center;
+height:100vh;
+}
+
+.card{
+background:white;
+padding:40px;
+border-radius:10px;
+box-shadow:0 10px 30px rgba(0,0,0,0.1);
+width:320px;
+text-align:center;
+}
+
+input{
+width:100%;
+padding:10px;
+margin-top:10px;
+}
+
+button{
+margin-top:20px;
+width:100%;
+padding:10px;
+background:#3b82f6;
+color:white;
+border:none;
+border-radius:5px;
+font-size:16px;
+}
+
+</style>
 </head>
 
 <body>
 
-<div class="login-box">
+<div class="card">
 
-<h1>글쓰기 진단평가</h1>
+<h2><%= title %></h2>
 
-<form method="post" action="/login">
+<form method="POST" action="/login">
 
-<label>이름</label>
-<input type="text" name="name" required>
+<input name="name" placeholder="이름">
 
-<label>학번</label>
-<input type="text" name="studentId" required>
+<input name="studentId" placeholder="학번">
 
-<button type="submit">시험 시작</button>
+<button type="submit">들어가기</button>
 
 </form>
 

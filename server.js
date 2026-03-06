@@ -176,3 +176,20 @@ app.post('/config', (req, res) => {
 app.listen(PORT, () => {
   console.log("Server running on port " + PORT);
 });
+
+app.get('/download', (req, res) => {
+
+let csv = "name,studentId,class,content,comment,date\n";
+
+submissions.forEach(s => {
+
+csv += `"${s.name}","${s.studentId}","${s.class}","${s.content}","${s.comment}","${s.date}"\n`;
+
+});
+
+res.header('Content-Type','text/csv');
+res.attachment('submissions.csv');
+
+return res.send(csv);
+
+});
