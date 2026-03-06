@@ -1,13 +1,30 @@
-<h2>제출 완료</h2>
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <title>작성 결과</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body class="app-page">
+<div class="app-shell">
+  <div class="top-card">
+    <div>
+      <div class="small-label">작성자</div>
+      <h1 class="page-title"><%= studentName %></h1>
+      <div class="meta-line"><%= studentClass ? "분반: " + studentClass : "" %></div>
+    </div>
+  </div>
 
-<p>작성 글</p>
+  <div class="panel-card">
+    <h2 class="section-title">제출한 글</h2>
+    <textarea readonly rows="12"><%= text %></textarea>
+  </div>
 
-<pre>
-<%= submission.content %>
-</pre>
-
-<p>교수 코멘트</p>
-
-<pre>
-<%= submission.comment || "아직 코멘트 없음" %>
-</pre>
+  <div class="panel-card">
+    <h2 class="section-title">코멘트</h2>
+    <textarea readonly rows="8"><%= comment || "아직 코멘트가 없습니다." %></textarea>
+  </div>
+</div>
+</body>
+</html>

@@ -1,5 +1,4 @@
 {
- "topic":"주제를 설정하세요",
- "minChars":500,
- "examStarted":false
+  "studentListRaw": "",
+  "classes": {}
 }

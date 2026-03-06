@@ -2,12 +2,13 @@
 <html>
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
   <title>관리자 페이지</title>
   <link rel="stylesheet" href="/style.css">
 </head>
 <body class="app-page">
-
 <div class="app-shell">
+
   <div class="top-card">
     <div>
       <div class="small-label">로그인 사용자</div>
@@ -17,73 +18,114 @@
         권한: <strong><%= adminRole === "super" ? "초관리자" : "교수자 관리자" %></strong>
       </div>
     </div>
-
     <div class="action-row">
-      <a class="ghost-btn" href="/csv">CSV 다운로드</a>
+      <a class="soft-btn" href="/csv">전체 CSV</a>
       <a class="danger-btn" href="/logout">로그아웃</a>
     </div>
   </div>
 
-  <div class="panel-card">
-    <h2 class="section-title">설정</h2>
-
-    <form method="POST" action="/setTopic" class="stack-form">
-      <label>주제</label>
-      <input
-        type="text"
-        name="topic"
-        value="<%= config.topic || '' %>"
-        required
-      >
-
-      <label>최소 글자수</label>
-      <input
-        type="number"
-        name="minChars"
-        value="<%= config.minChars || 500 %>"
-        required
-      >
-
-      <button type="submit" class="primary-btn">설정 저장</button>
-    </form>
-
-    <div class="action-row margin-top">
-      <form method="POST" action="/startExam">
-        <button type="submit" class="primary-btn">시작</button>
-      </form>
-
-      <form method="POST" action="/stopExam">
-        <button type="submit" class="ghost-btn">종료</button>
+  <% if (adminRole === "super") { %>
+    <div class="panel-card">
+      <h2 class="section-title">교수자 추가</h2>
+      <form method="POST" action="/add-professor" class="stack-form">
+        <input name="name" placeholder="이름" required>
+        <input name="id" placeholder="교수자 ID" required>
+        <input name="password" placeholder="비밀번호" required>
+        <button type="submit" class="soft-btn">추가</button>
       </form>
     </div>
-
-    <div class="status-box">
-      현재 상태:
-      <strong><%= config.examStarted ? "진행중" : "대기중" %></strong>
-    </div>
-  </div>
+  <% } %>
 
   <div class="panel-card">
     <h2 class="section-title">학생 명단 입력</h2>
-    <p class="help-text">엑셀에서 복사해 붙여넣으세요. 형식: 이름,학번,분반</p>
-
+    <p class="help-text">형식: 이름, 학번, 분반 / 쉼표, 탭, 여러 칸 띄어쓰기 모두 가능</p>
     <form method="POST" action="/addStudents" class="stack-form">
-      <textarea
-        name="list"
-        rows="8"
-        placeholder="김영희,2024001,A&#10;박민수,2024002,B"
-        required
-      ><%= config.studentListRaw || '' %></textarea>
-
-      <button type="submit" class="primary-btn">학생 등록</button>
+      <textarea name="list" rows="8" required><%= config.studentListRaw || "" %></textarea>
+      <button type="submit" class="soft-btn">등록</button>
     </form>
   </div>
 
   <div class="panel-card">
-    <h2 class="section-title">등록된 학생 / 제출 현황</h2>
+    <h2 class="section-title">분반 설정</h2>
+
+    <% if (classList.length === 0) { %>
+      <p class="help-text">먼저 학생 명단을 등록하세요.</p>
+    <% } else { %>
+      <form method="GET" action="/admin" class="inline-form">
+        <select name="manageClass">
+          <% classList.forEach(cls => { %>
+            <option value="<%= cls %>" <%= manageClass === cls ? "selected" : "" %>><%= cls %></option>
+          <% }) %>
+        </select>
+        <button type="submit" class="subtle-btn">불러오기</button>
+      </form>
+
+      <% if (selectedClassConfig && manageClass) { %>
+        <form method="POST" action="/setClassConfig" class="stack-form margin-top">
+          <input type="hidden" name="className" value="<%= manageClass %>">
+
+          <label>분반</label>
+          <input value="<%= manageClass %>" readonly>
+
+          <label>주제</label>
+          <input name="topic" value="<%= selectedClassConfig.topic || '' %>" required>
+
+          <label>최소 글자수</label>
+          <input type="number" name="minChars" value="<%= selectedClassConfig.minChars || 500 %>" required>
+
+          <label>진행 시간(분)</label>
+          <input type="number" name="durationMinutes" value="<%= selectedClassConfig.durationMinutes || 50 %>" required>
+
+          <button type="submit" class="soft-btn">설정 저장</button>
+        </form>
+
+        <div class="action-row margin-top">
+          <form method="POST" action="/startClass">
+            <input type="hidden" name="className" value="<%= manageClass %>">
+            <button type="submit" class="soft-btn">시작</button>
+          </form>
+
+          <form method="POST" action="/stopClass">
+            <input type="hidden" name="className" value="<%= manageClass %>">
+            <button type="submit" class="subtle-btn">종료</button>
+          </form>
+
+          <a class="subtle-btn" href="/csv?class=<%= encodeURIComponent(manageClass) %>">CSV 다운로드</a>
+        </div>
+
+        <div class="status-box">
+          현재 상태:
+          <strong><%= selectedClassConfig.started ? "진행 중" : "대기" %></strong>
+        </div>
+      <% } %>
+    <% } %>
+  </div>
+
+  <div class="panel-card">
+    <h2 class="section-title">학생 검색</h2>
+    <form method="GET" action="/admin" class="inline-form">
+      <input type="text" name="search" value="<%= search %>" placeholder="이름 또는 학번 검색">
+
+      <select name="class">
+        <option value="">전체 분반</option>
+        <% classList.forEach(cls => { %>
+          <option value="<%= cls %>" <%= classFilter === cls ? "selected" : "" %>><%= cls %></option>
+        <% }) %>
+      </select>
+
+      <% if (manageClass) { %>
+        <input type="hidden" name="manageClass" value="<%= manageClass %>">
+      <% } %>
+
+      <button type="submit" class="soft-btn">검색</button>
+    </form>
+  </div>
+
+  <div class="panel-card">
+    <h2 class="section-title">학생 목록</h2>
 
     <% if (students.length === 0) { %>
-      <p class="help-text">등록된 학생이 없습니다.</p>
+      <p class="help-text">학생이 없습니다.</p>
     <% } %>
 
     <% students.forEach(student => { 
@@ -91,27 +133,44 @@
     %>
       <div class="student-card">
         <div class="student-top">
-          <strong><%= student.name %></strong>
+          <a class="student-link" href="/admin/student/<%= student.studentId %>"><strong><%= student.name %></strong></a>
           <span>학번: <%= student.studentId %></span>
           <span>분반: <%= student.class || "-" %></span>
-          <span>상태: <%= sub.submitted ? "제출완료" : "미제출" %></span>
+          <span>제출: <%= sub.submitted ? "완료" : "미제출" %></span>
+          <span>차단: <%= sub.locked ? "차단" : "정상" %></span>
+          <span>승인 요청: <%= sub.approvalRequested ? "요청" : "없음" %></span>
         </div>
 
-        <div class="stack-form">
-          <label>제출 글</label>
-          <textarea readonly rows="8"><%= sub.text || "" %></textarea>
+        <div class="action-row margin-top">
+          <a class="subtle-btn" href="/admin/student/<%= student.studentId %>">열기</a>
+          <a class="subtle-btn" href="/download/student/<%= student.studentId %>">다운로드</a>
+
+          <form method="POST" action="/unlock-student">
+            <input type="hidden" name="studentId" value="<%= student.studentId %>">
+            <button type="submit" class="soft-btn">잠금 해제</button>
+          </form>
+
+          <form method="POST" action="/reopen-student">
+            <input type="hidden" name="studentId" value="<%= student.studentId %>">
+            <button type="submit" class="subtle-btn">재로그인 허용</button>
+          </form>
+        </div>
+
+        <div class="stack-form margin-top">
+          <label>짧은 미리보기</label>
+          <textarea readonly rows="5"><%= sub.text || "" %></textarea>
 
           <form method="POST" action="/comment" class="stack-form">
             <input type="hidden" name="studentId" value="<%= student.studentId %>">
             <label>코멘트</label>
-            <textarea name="comment" rows="4" placeholder="코멘트를 입력하세요"><%= sub.comment || "" %></textarea>
-            <button type="submit" class="primary-btn">코멘트 저장</button>
+            <textarea name="comment" rows="4"><%= sub.comment || "" %></textarea>
+            <button type="submit" class="soft-btn">코멘트 저장</button>
           </form>
         </div>
       </div>
     <% }) %>
   </div>
-</div>
 
+</div>
 </body>
 </html>

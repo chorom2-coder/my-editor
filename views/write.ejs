@@ -2,19 +2,20 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>글쓰기</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <title>글 작성</title>
   <link rel="stylesheet" href="/style.css">
 </head>
 <body class="app-page">
-
 <div class="app-shell">
   <div class="top-card">
     <div>
       <div class="small-label">작성자</div>
       <h1 class="page-title"><%= studentName %></h1>
-      <div class="meta-line">
-        <%= studentClass ? "분반: " + studentClass : "" %>
-      </div>
+      <div class="meta-line"><%= studentClass ? "분반: " + studentClass : "" %></div>
+    </div>
+    <div class="timer-box">
+      남은 시간 <strong id="timerText">--:--</strong>
     </div>
   </div>
 
@@ -22,24 +23,47 @@
     <h2 class="section-title">주제</h2>
     <div class="topic-box"><%= topic %></div>
 
+    <div class="notice-inline">
+      <strong>유의사항</strong>
+      <div>• 복사 및 붙여넣기 불가</div>
+      <div>• 화면 이탈 시 입력 불가</div>
+      <div>• 교수자 승인 후 작성 가능</div>
+    </div>
+
     <div class="count-box">
       공백 포함 <strong><span id="withSpace">0</span></strong> /
       공백 제외 <strong><span id="withoutSpace">0</span></strong> /
       최소 글자수 <strong><%= minChars %></strong>
     </div>
 
+    <div id="lockBanner" class="lock-banner" style="display:none;">
+      입력창이 차단되었습니다. 교수자 승인 후 다시 작성할 수 있습니다.
+    </div>
+
     <textarea id="editor"><%= text %></textarea>
 
     <div class="action-row">
-      <button type="button" class="primary-btn" onclick="manualSave()">임시저장</button>
-      <button type="button" class="danger-btn" onclick="submitExam()">제출</button>
+      <button type="button" class="soft-btn" onclick="manualSave()">임시저장</button>
+      <button type="button" class="danger-btn" id="submitBtn" onclick="submitExam()">제출</button>
     </div>
+  </div>
+</div>
+
+<div id="modalOverlay" class="modal-overlay" style="display:none;">
+  <div class="modal-card">
+    <h3 id="modalTitle">알림</h3>
+    <p id="modalMessage"></p>
+    <div id="modalButtons" class="modal-buttons"></div>
   </div>
 </div>
 
 <script>
   const id = "<%= id %>"
   const minChars = <%= minChars %>
+  const startTime = <%= startTime ? startTime : "null" %>
+  const endTime = <%= endTime ? endTime : "null" %>
+  const started = <%= started ? "true" : "false" %>
+  const initialLocked = <%= locked ? "true" : "false" %>
 </script>
 <script src="/editor.js"></script>
 </body>

@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <title>대기 중</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body class="center-page">
+  <div class="portal-card">
+    <div class="identity-badge">작성자: <%= studentName %><%= studentClass ? " / " + studentClass : "" %></div>
+    <h1 class="portal-title">대기 중</h1>
+    <p class="portal-subtitle">시작되면 전체화면(Full Screen)으로 전환됩니다.</p>
+  </div>
+
+  <script>
+    setInterval(function(){
+      location.reload()
+    }, 3000)
+  </script>
+</body>
+</html>

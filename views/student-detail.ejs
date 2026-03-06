@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <title>학생 글 상세</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body class="app-page">
+<div class="app-shell">
+  <div class="top-card">
+    <div>
+      <div class="small-label">학생 정보</div>
+      <h1 class="page-title"><%= student.name %></h1>
+      <div class="meta-line">
+        학번: <%= student.studentId %> / 분반: <%= student.class || "-" %>
+      </div>
+    </div>
+    <div class="action-row">
+      <a class="subtle-btn" href="/admin">목록으로</a>
+      <a class="soft-btn" href="/download/student/<%= student.studentId %>">다운로드</a>
+    </div>
+  </div>
+
+  <div class="panel-card">
+    <h2 class="section-title">상태</h2>
+    <div class="status-box">
+      제출: <strong><%= submission.submitted ? "완료" : "미제출" %></strong> /
+      차단: <strong><%= submission.locked ? "차단" : "정상" %></strong> /
+      승인 요청: <strong><%= submission.approvalRequested ? "요청" : "없음" %></strong>
+    </div>
+  </div>
+
+  <div class="panel-card">
+    <h2 class="section-title">글 내용</h2>
+    <textarea readonly rows="14"><%= submission.text || "" %></textarea>
+  </div>
+
+  <div class="panel-card">
+    <h2 class="section-title">코멘트</h2>
+    <textarea readonly rows="8"><%= submission.comment || "" %></textarea>
+  </div>
+</div>
+</body>
+</html>
