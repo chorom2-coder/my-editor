@@ -4,7 +4,9 @@ const bodyParser = require('body-parser');
 const path = require('path');
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
+
+let isLoggedIn = false;
 
 // Static & view engine
 app.use(express.static('public'));
@@ -31,7 +33,7 @@ if (fs.existsSync(dataPath)) {
   fs.writeFileSync(dataPath, JSON.stringify(submissions, null, 2));
 }
 
-// 로그인 화면
+// 로그인 페이지
 app.get('/login', (req, res) => {
   res.render('login', { error: null });
 });
@@ -50,6 +52,10 @@ app.post('/login', (req, res) => {
 
 // 글쓰기 페이지
 app.get('/', (req, res) => {
+  if (!isLoggedIn) {
+    return res.redirect('/login');
+  }
+
   res.render('index', { title: config.title });
 });
 
@@ -60,10 +66,14 @@ app.post('/submit', (req, res) => {
   }
 
   const content = req.body.content || '';
+<<<<<<< HEAD
   const entry = {
     content,
     date: new Date().toLocaleString()
   };
+=======
+  const entry = { content, date: new Date().toLocaleString() };
+>>>>>>> dbfcb2bb5ac689bfd01c80f96e6d58ac8ef0a1be
 
   submissions.push(entry);
   fs.writeFileSync(dataPath, JSON.stringify(submissions, null, 2));
@@ -76,6 +86,7 @@ app.get('/admin', (req, res) => {
   if (!isLoggedIn) {
     return res.redirect('/login');
   }
+<<<<<<< HEAD
 
   res.render('admin', { submissions });
 });
@@ -83,3 +94,9 @@ app.get('/admin', (req, res) => {
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
+=======
+  res.render('admin', { submissions });
+});
+
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+>>>>>>> dbfcb2bb5ac689bfd01c80f96e6d58ac8ef0a1be
