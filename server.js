@@ -73,7 +73,7 @@ app.get("/waiting/:id",(req,res)=>{
  }
 
  res.send(`
- <h2>시험 대기중입니다</h2>
+ <h2>대기중입니다</h2>
  <script>
  setInterval(()=>{
   location.reload()
@@ -147,6 +147,28 @@ app.get("/admin",(req,res)=>{
  res.render("admin",{students,submissions,config})
 
 })
+
+app.get("/admin-login",(req,res)=>{
+ res.render("admin-login")
+})
+
+app.post("/admin-login",(req,res)=>{
+
+ const {id,password} = req.body
+
+ const admins = readJSON("admins.json")
+
+ const admin = admins.find(a=>a.id===id && a.password===password)
+
+ if(!admin){
+  return res.send("관리자 로그인 실패")
+ }
+
+ res.redirect("/admin")
+
+})
+
+
 
 app.post("/addStudent",(req,res)=>{
 
