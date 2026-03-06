@@ -14,9 +14,6 @@ app.set('view engine', 'ejs');
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.json());
 
-// 간단 로그인 상태 변수
-let isLoggedIn = false;
-
 // Load config
 const configPath = path.join(__dirname, 'config.json');
 let config = { title: "글쓰기 진단평가" };
