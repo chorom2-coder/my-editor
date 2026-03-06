@@ -1,1 +1,50 @@
-{}
+{
+  "2026001": {
+    "name": "김영희",
+    "studentId": "2026001",
+    "class": "화123",
+    "text": "ㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddㅇ",
+    "submitted": true,
+    "comment": "김영희 글 ",
+    "warningCount": 0,
+    "locked": false,
+    "approvalRequested": false,
+    "allowRelogin": true
+  },
+  "2026002": {
+    "name": "김철수",
+    "studentId": "2026002",
+    "class": "화123",
+    "text": "",
+    "submitted": false,
+    "comment": "",
+    "warningCount": 0,
+    "locked": false,
+    "approvalRequested": false,
+    "allowRelogin": true
+  },
+  "2026003": {
+    "name": "박영희",
+    "studentId": "2026003",
+    "class": "화789",
+    "text": "",
+    "submitted": false,
+    "comment": "",
+    "warningCount": 2,
+    "locked": true,
+    "approvalRequested": true,
+    "allowRelogin": true
+  },
+  "2026004": {
+    "name": "박철수",
+    "studentId": "2026004",
+    "class": "화789",
+    "text": "",
+    "submitted": false,
+    "comment": "",
+    "warningCount": 0,
+    "locked": false,
+    "approvalRequested": false,
+    "allowRelogin": false
+  }
+}

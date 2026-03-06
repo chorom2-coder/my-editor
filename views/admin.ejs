@@ -1,176 +1,89 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-  <title>관리자 페이지</title>
-  <link rel="stylesheet" href="/style.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>관리자 페이지</title>
+<link rel="stylesheet" href="/style.css">
 </head>
-<body class="app-page">
-<div class="app-shell">
 
-  <div class="top-card">
-    <div>
-      <div class="small-label">로그인 사용자</div>
-      <h1 class="page-title"><%= adminName %></h1>
-      <div class="meta-line">
-        계정: <strong><%= adminId %></strong> /
-        권한: <strong><%= adminRole === "super" ? "초관리자" : "교수자 관리자" %></strong>
-      </div>
-    </div>
-    <div class="action-row">
-      <a class="soft-btn" href="/csv">전체 CSV</a>
-      <a class="danger-btn" href="/logout">로그아웃</a>
-    </div>
-  </div>
+<body>
 
-  <% if (adminRole === "super") { %>
-    <div class="panel-card">
-      <h2 class="section-title">교수자 추가</h2>
-      <form method="POST" action="/add-professor" class="stack-form">
-        <input name="name" placeholder="이름" required>
-        <input name="id" placeholder="교수자 ID" required>
-        <input name="password" placeholder="비밀번호" required>
-        <button type="submit" class="soft-btn">추가</button>
-      </form>
-    </div>
-  <% } %>
+<h1>관리자 페이지</h1>
 
-  <div class="panel-card">
-    <h2 class="section-title">학생 명단 입력</h2>
-    <p class="help-text">형식: 이름, 학번, 분반 / 쉼표, 탭, 여러 칸 띄어쓰기 모두 가능</p>
-    <form method="POST" action="/addStudents" class="stack-form">
-      <textarea name="list" rows="8" required><%= config.studentListRaw || "" %></textarea>
-      <button type="submit" class="soft-btn">등록</button>
-    </form>
-  </div>
+<p>로그인 사용자: <%= adminName %></p>
 
-  <div class="panel-card">
-    <h2 class="section-title">분반 설정</h2>
+<p>승인 요청: <%= approvalCount || 0 %> 명</p>
 
-    <% if (classList.length === 0) { %>
-      <p class="help-text">먼저 학생 명단을 등록하세요.</p>
-    <% } else { %>
-      <form method="GET" action="/admin" class="inline-form">
-        <select name="manageClass">
-          <% classList.forEach(cls => { %>
-            <option value="<%= cls %>" <%= manageClass === cls ? "selected" : "" %>><%= cls %></option>
-          <% }) %>
-        </select>
-        <button type="submit" class="subtle-btn">불러오기</button>
-      </form>
+<hr>
 
-      <% if (selectedClassConfig && manageClass) { %>
-        <form method="POST" action="/setClassConfig" class="stack-form margin-top">
-          <input type="hidden" name="className" value="<%= manageClass %>">
+<h2>분반 설정</h2>
 
-          <label>분반</label>
-          <input value="<%= manageClass %>" readonly>
+<form method="POST" action="/startClass">
+<input type="text" name="className" placeholder="분반 입력">
+<button type="submit">시작</button>
+</form>
 
-          <label>주제</label>
-          <input name="topic" value="<%= selectedClassConfig.topic || '' %>" required>
+<form method="POST" action="/stopClass">
+<input type="text" name="className" placeholder="분반 입력">
+<button type="submit">종료</button>
+</form>
 
-          <label>최소 글자수</label>
-          <input type="number" name="minChars" value="<%= selectedClassConfig.minChars || 500 %>" required>
+<hr>
 
-          <label>진행 시간(분)</label>
-          <input type="number" name="durationMinutes" value="<%= selectedClassConfig.durationMinutes || 50 %>" required>
+<h2>학생 목록</h2>
 
-          <button type="submit" class="soft-btn">설정 저장</button>
-        </form>
+<table border="1" cellpadding="8">
 
-        <div class="action-row margin-top">
-          <form method="POST" action="/startClass">
-            <input type="hidden" name="className" value="<%= manageClass %>">
-            <button type="submit" class="soft-btn">시작</button>
-          </form>
+<tr>
+<th>이름</th>
+<th>학번</th>
+<th>분반</th>
+<th>상태</th>
+<th>작업</th>
+</tr>
 
-          <form method="POST" action="/stopClass">
-            <input type="hidden" name="className" value="<%= manageClass %>">
-            <button type="submit" class="subtle-btn">종료</button>
-          </form>
+<% students.forEach(function(student){ %>
 
-          <a class="subtle-btn" href="/csv?class=<%= encodeURIComponent(manageClass) %>">CSV 다운로드</a>
-        </div>
+<tr>
 
-        <div class="status-box">
-          현재 상태:
-          <strong><%= selectedClassConfig.started ? "진행 중" : "대기" %></strong>
-        </div>
-      <% } %>
-    <% } %>
-  </div>
+<td><%= student.name %></td>
 
-  <div class="panel-card">
-    <h2 class="section-title">학생 검색</h2>
-    <form method="GET" action="/admin" class="inline-form">
-      <input type="text" name="search" value="<%= search %>" placeholder="이름 또는 학번 검색">
+<td><%= student.studentId %></td>
 
-      <select name="class">
-        <option value="">전체 분반</option>
-        <% classList.forEach(cls => { %>
-          <option value="<%= cls %>" <%= classFilter === cls ? "selected" : "" %>><%= cls %></option>
-        <% }) %>
-      </select>
+<td><%= student.class %></td>
 
-      <% if (manageClass) { %>
-        <input type="hidden" name="manageClass" value="<%= manageClass %>">
-      <% } %>
+<td>
 
-      <button type="submit" class="soft-btn">검색</button>
-    </form>
-  </div>
+<% const sub = submissions[student.studentId] || {} %>
 
-  <div class="panel-card">
-    <h2 class="section-title">학생 목록</h2>
+<% if(sub.submitted){ %>
+제출 완료
+<% } else { %>
+미제출
+<% } %>
 
-    <% if (students.length === 0) { %>
-      <p class="help-text">학생이 없습니다.</p>
-    <% } %>
+<% if(sub.approvalRequested){ %>
+ | 승인 요청
+<% } %>
 
-    <% students.forEach(student => { 
-         const sub = submissions[student.studentId] || {}
-    %>
-      <div class="student-card">
-        <div class="student-top">
-          <a class="student-link" href="/admin/student/<%= student.studentId %>"><strong><%= student.name %></strong></a>
-          <span>학번: <%= student.studentId %></span>
-          <span>분반: <%= student.class || "-" %></span>
-          <span>제출: <%= sub.submitted ? "완료" : "미제출" %></span>
-          <span>차단: <%= sub.locked ? "차단" : "정상" %></span>
-          <span>승인 요청: <%= sub.approvalRequested ? "요청" : "없음" %></span>
-        </div>
+</td>
 
-        <div class="action-row margin-top">
-          <a class="subtle-btn" href="/admin/student/<%= student.studentId %>">열기</a>
-          <a class="subtle-btn" href="/download/student/<%= student.studentId %>">다운로드</a>
+<td>
 
-          <form method="POST" action="/unlock-student">
-            <input type="hidden" name="studentId" value="<%= student.studentId %>">
-            <button type="submit" class="soft-btn">잠금 해제</button>
-          </form>
+<a href="/admin/student/<%= student.studentId %>">열기</a>
 
-          <form method="POST" action="/reopen-student">
-            <input type="hidden" name="studentId" value="<%= student.studentId %>">
-            <button type="submit" class="subtle-btn">재로그인 허용</button>
-          </form>
-        </div>
+</td>
 
-        <div class="stack-form margin-top">
-          <label>짧은 미리보기</label>
-          <textarea readonly rows="5"><%= sub.text || "" %></textarea>
+</tr>
 
-          <form method="POST" action="/comment" class="stack-form">
-            <input type="hidden" name="studentId" value="<%= student.studentId %>">
-            <label>코멘트</label>
-            <textarea name="comment" rows="4"><%= sub.comment || "" %></textarea>
-            <button type="submit" class="soft-btn">코멘트 저장</button>
-          </form>
-        </div>
-      </div>
-    <% }) %>
-  </div>
+<% }) %>
 
-</div>
+</table>
+
+<br>
+
+<a href="/logout">로그아웃</a>
+
 </body>
 </html>

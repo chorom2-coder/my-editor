@@ -82,14 +82,9 @@ function sendWarn() {
         updateLockUI()
 
         showModal(
-          "입력창 차단",
-          "화면 이탈 2회 감지: 입력창 차단\n잠금을 해제하려면 교수자의 승인이 필요합니다.",
+          "입력 제한",
+          "입력창이 차단되었습니다. 교수자 승인 후 다시 작성할 수 있습니다.",
           [
-            {
-              label: "확인",
-              className: "subtle-btn",
-              onClick: closeModal
-            },
             {
               label: "승인 요청",
               className: "soft-btn",

@@ -3,22 +3,20 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-  <title>글쓰기 포털</title>
+  <title>관리자 포털</title>
   <link rel="stylesheet" href="/style.css">
 </head>
 <body class="center-page">
   <div class="portal-card">
-    <h1 class="portal-title">글쓰기 포털</h1>
-    <form method="POST" action="/login" class="portal-form">
-      <input name="name" placeholder="이름" required>
-      <input name="id" placeholder="학번" required>
-      <button type="submit" class="soft-btn">입장</button>
+    <h1 class="portal-title">관리자 포털</h1>
+
+    <form method="POST" action="/admin-login" class="portal-form">
+      <input name="id" placeholder="관리자 ID" required>
+      <input name="password" type="password" placeholder="비밀번호" required>
+      <button type="submit" class="soft-btn">로그인</button>
     </form>
 
-    <div class="notice-card">
-      <h3>권장 환경 안내</h3>
-      <p>• 크롬(Chrome) 브라우저 사용을 권장합니다.</p>
-    </div>
+    <a class="text-link" href="/login">학생 로그인으로 이동</a>
   </div>
 </body>
 </html>

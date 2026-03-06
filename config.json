@@ -1,4 +1,21 @@
 {
-  "studentListRaw": "",
-  "classes": {}
+  "studentListRaw": "김영희\t2026001\t화123\r\n김철수\t2026002\t화123\r\n박영희\t2026003\t화789\r\n박철수\t2026004\t화789\r\n",
+  "classes": {
+    "화123": {
+      "topic": "화123 글쓰기 진단평가",
+      "minChars": 500,
+      "durationMinutes": 50,
+      "started": false,
+      "startTime": 1772834817901,
+      "endTime": 1772834820278
+    },
+    "화789": {
+      "topic": "화789 글쓰기 논증문",
+      "minChars": 300,
+      "durationMinutes": 50,
+      "started": true,
+      "startTime": 1772824920618,
+      "endTime": 1772827920618
+    }
+  }
 }

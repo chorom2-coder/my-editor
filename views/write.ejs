@@ -25,9 +25,7 @@
 
     <div class="notice-inline">
       <strong>유의사항</strong>
-      <div>• 복사 및 붙여넣기 불가</div>
-      <div>• 화면 이탈 시 입력 불가</div>
-      <div>• 교수자 승인 후 작성 가능</div>
+      <div>• 복사 및 붙여넣기 불가 / • 화면 이탈 시 입력 불가 / • 교수자 승인 후 작성 가능</div>
     </div>
 
     <div class="count-box">
@@ -66,5 +64,23 @@
   const initialLocked = <%= locked ? "true" : "false" %>
 </script>
 <script src="/editor.js"></script>
+
+<script>
+
+document.addEventListener("DOMContentLoaded",()=>{
+
+  const elem=document.documentElement
+
+  if(elem.requestFullscreen){
+    elem.requestFullscreen()
+  }
+
+})
+
+</script>
+
+
+
+
 </body>
 </html>

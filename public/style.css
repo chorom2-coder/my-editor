@@ -5,9 +5,11 @@
 body{
   margin:0;
   font-family: Arial, Helvetica, sans-serif;
-  color:#2f3542;
-  background:linear-gradient(180deg,#f7f7f5 0%, #efefeb 100%);
+  background:#fafafa;
+  color:#262626;
 }
+
+/* 로그인/포털 */
 
 .center-page{
   min-height:100vh;
@@ -19,12 +21,12 @@ body{
 
 .portal-card{
   width:100%;
-  max-width:440px;
-  background:#ffffff;
-  border:1px solid #e6e4de;
-  border-radius:24px;
+  max-width:420px;
+  background:#fff;
+  border:1px solid #dbdbdb;
+  border-radius:22px;
   padding:40px 32px;
-  box-shadow:0 18px 36px rgba(0,0,0,0.06);
+  box-shadow:0 10px 30px rgba(0,0,0,0.06);
   text-align:center;
 }
 
@@ -32,14 +34,7 @@ body{
   margin:0 0 18px 0;
   font-size:28px;
   font-weight:700;
-  color:#304036;
-}
-
-.portal-subtitle{
-  margin:0 0 8px 0;
-  color:#6c726d;
-  font-size:15px;
-  line-height:1.6;
+  color:#262626;
 }
 
 .portal-form{
@@ -56,12 +51,12 @@ body{
 textarea{
   width:100%;
   padding:14px 16px;
-  border:1px solid #d9d7cf;
-  border-radius:14px;
+  border:1px solid #dbdbdb;
+  border-radius:12px;
   font-size:15px;
+  background:#fff;
+  color:#262626;
   outline:none;
-  background:#fbfaf7;
-  color:#2f3542;
 }
 
 .portal-form input:focus,
@@ -70,79 +65,100 @@ textarea{
 .inline-form input:focus,
 .inline-form select:focus,
 textarea:focus{
-  background:#fff;
-  border-color:#b8b5ab;
-}
-
-.soft-btn,
-.subtle-btn,
-.danger-btn{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  padding:12px 18px;
-  border:none;
-  border-radius:12px;
-  font-size:15px;
-  font-weight:600;
-  text-decoration:none;
-  cursor:pointer;
-}
-
-.soft-btn{
-  background:#7e9b8f;
-  color:#fff;
-}
-
-.soft-btn:hover{
-  background:#6e8b80;
-}
-
-.subtle-btn{
-  background:#ebe8de;
-  color:#4a534d;
-  border:1px solid #d7d2c6;
-}
-
-.subtle-btn:hover{
-  background:#e2ddd1;
-}
-
-.danger-btn{
-  background:#b46b6b;
-  color:#fff;
-}
-
-.danger-btn:hover{
-  background:#a15c5c;
-}
-
-.text-link{
-  display:inline-block;
-  margin-top:18px;
-  color:#66706a;
-  text-decoration:none;
-  font-size:14px;
+  border-color:#b8b8b8;
 }
 
 .notice-card{
-  margin-top:20px;
-  padding:16px;
+  margin-top:18px;
+  padding:14px 16px;
   border-radius:16px;
-  background:#f5f3ec;
+  background:#fafafa;
+  border:1px solid #efefef;
   text-align:left;
 }
 
 .notice-card h3{
-  margin:0 0 8px 0;
-  font-size:16px;
+  margin:0 0 6px 0;
+  font-size:13px;
+  font-weight:700;
+  color:#555;
 }
 
 .notice-card p{
   margin:0;
-  line-height:1.7;
-  color:#5f665f;
+  font-size:12px;
+  line-height:1.6;
+  color:#666;
 }
+
+.text-link{
+  display:inline-block;
+  margin-top:16px;
+  color:#666;
+  text-decoration:none;
+  font-size:14px;
+}
+
+/* 공통 버튼 */
+
+.soft-btn,
+.subtle-btn,
+.danger-btn,
+.done-btn,
+.bulk-btn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:12px 16px;
+  border:none;
+  border-radius:10px;
+  font-size:14px;
+  font-weight:600;
+  text-decoration:none;
+  cursor:pointer;
+  transition:all 0.2s ease;
+}
+
+.soft-btn{
+  background:#4f46e5;
+  color:#fff;
+}
+
+.soft-btn:hover{
+  background:#4338ca;
+}
+
+.subtle-btn{
+  background:#fff;
+  color:#333;
+  border:1px solid #dbdbdb;
+}
+
+.subtle-btn:hover{
+  background:#f7f7f7;
+}
+
+.danger-btn{
+  background:#ef4444;
+  color:#fff;
+}
+
+.danger-btn:hover{
+  background:#dc2626;
+}
+
+.done-btn{
+  background:#eef2ff;
+  color:#4338ca;
+  border:1px solid #c7d2fe;
+}
+
+.btn-sm{
+  padding:10px 12px;
+  font-size:13px;
+}
+
+/* 관리자/작성 화면 */
 
 .app-page{
   min-height:100vh;
@@ -151,18 +167,21 @@ textarea:focus{
 
 .app-shell{
   width:100%;
-  max-width:980px;
+  max-width:1080px;
   margin:0 auto;
+}
+
+.insta-card{
+  background:#fff;
+  border:1px solid #dbdbdb;
+  border-radius:22px;
+  box-shadow:0 8px 24px rgba(0,0,0,0.05);
 }
 
 .top-card,
 .panel-card{
-  background:#ffffff;
-  border:1px solid #e7e3da;
-  border-radius:24px;
-  box-shadow:0 16px 32px rgba(0,0,0,0.05);
-  padding:28px;
-  margin-bottom:20px;
+  padding:24px;
+  margin-bottom:18px;
 }
 
 .top-card{
@@ -173,28 +192,28 @@ textarea:focus{
 }
 
 .small-label{
-  font-size:13px;
-  color:#7a8078;
+  font-size:12px;
+  color:#8e8e8e;
   margin-bottom:6px;
 }
 
 .page-title{
   margin:0;
-  font-size:30px;
+  font-size:28px;
   font-weight:700;
-  color:#314038;
+  color:#262626;
 }
 
 .meta-line{
   margin-top:8px;
-  color:#737971;
+  color:#666;
   font-size:14px;
 }
 
 .section-title{
   margin:0 0 16px 0;
-  font-size:22px;
-  color:#314038;
+  font-size:21px;
+  color:#262626;
 }
 
 .stack-form{
@@ -229,7 +248,7 @@ textarea:focus{
 }
 
 .help-text{
-  color:#6d726d;
+  color:#666;
   font-size:14px;
   line-height:1.6;
 }
@@ -237,67 +256,223 @@ textarea:focus{
 .status-box{
   margin-top:16px;
   padding:14px 16px;
-  background:#f6f4ee;
-  border-radius:14px;
+  background:#fafafa;
+  border:1px solid #eee;
+  border-radius:12px;
   font-size:14px;
 }
 
-.student-card{
-  border:1px solid #e5e1d7;
-  border-radius:18px;
-  padding:18px;
-  margin-bottom:16px;
-  background:#fcfbf8;
-}
+/* 목록형 학생 리스트 */
 
-.student-top{
+.list-header{
   display:flex;
-  flex-wrap:wrap;
+  justify-content:space-between;
+  align-items:center;
+  gap:16px;
+  margin-bottom:16px;
+}
+
+.bulk-btn{
+  background:#e5e7eb;
+  color:#666;
+  cursor:not-allowed;
+}
+
+.bulk-btn.active{
+  background:#4f46e5;
+  color:#fff;
+  cursor:pointer;
+}
+
+.student-list-table{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+.student-row{
+  display:grid;
+  grid-template-columns:40px 1.2fr 1fr 0.8fr 1.5fr 2fr;
   gap:12px;
-  margin-bottom:10px;
-  font-size:14px;
+  align-items:center;
+  padding:14px 16px;
+  border:1px solid #efefef;
+  border-radius:14px;
+  background:#fff;
+}
+
+.row-head{
+  background:#fafafa;
+  font-size:13px;
+  font-weight:700;
+  color:#666;
+}
+
+.row-actions{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
 }
 
 .student-link{
-  color:#314038;
+  color:#262626;
   text-decoration:none;
+  font-weight:600;
 }
 
-.topic-box{
-  padding:16px;
-  background:#f6f4ee;
-  border-radius:14px;
-  font-size:16px;
-  line-height:1.7;
+.student-link:hover{
+  text-decoration:underline;
 }
 
-.count-box{
-  margin:16px 0 12px 0;
-  color:#59615c;
-  font-size:14px;
+.badge-wrap{
+  display:flex;
+  gap:6px;
+  flex-wrap:wrap;
 }
+
+.badge{
+  padding:5px 10px;
+  border-radius:999px;
+  font-size:12px;
+  font-weight:700;
+}
+
+.badge-green{
+  background:#dcfce7;
+  color:#166534;
+}
+
+.badge-red{
+  background:#fee2e2;
+  color:#991b1b;
+}
+
+.badge-orange{
+  background:#ffedd5;
+  color:#9a3412;
+}
+
+.badge-blue{
+  background:#dbeafe;
+  color:#1d4ed8;
+}
+
+.badge-gray{
+  background:#f3f4f6;
+  color:#666;
+}
+
+/* 작성 화면 */
 
 .notice-inline{
   margin-top:16px;
   padding:14px 16px;
-  border-radius:14px;
-  background:#f8f6f1;
-  color:#59615c;
+  border-radius:12px;
+  background:#fafafa;
+  border:1px solid #efefef;
+  color:#555;
   line-height:1.8;
   font-size:14px;
 }
 
+.count-box{
+  margin:16px 0 12px 0;
+  color:#666;
+  font-size:14px;
+}
+
+.topic-box{
+  padding:16px;
+  background:#fafafa;
+  border:1px solid #efefef;
+  border-radius:12px;
+  font-size:16px;
+  line-height:1.7;
+}
+
+.timer-box{
+  padding:12px 16px;
+  border-radius:12px;
+  background:#fafafa;
+  border:1px solid #efefef;
+  font-size:15px;
+}
+
 #editor{
   width:100%;
-  min-height:420px;
-  padding:18px;
-  border:1px solid #d9d7cf;
-  border-radius:16px;
+  min-height:560px;
+  padding:20px;
+  border:1px solid #dbdbdb;
+  border-radius:14px;
   background:#fff;
   font-size:16px;
   line-height:1.8;
-  outline:none;
   resize:vertical;
+}
+
+textarea[readonly]{
+  background:#fafafa;
+}
+
+/* 플래시 메시지 */
+
+.flash-banner{
+  margin-bottom:16px;
+  padding:14px 16px;
+  border-radius:14px;
+  background:#ecfdf5;
+  border:1px solid #bbf7d0;
+  color:#166534;
+  font-size:14px;
+  font-weight:600;
+  transition:opacity 0.3s ease;
+}
+
+/* 모달 */
+
+.modal-overlay{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.35);
+  backdrop-filter:blur(4px);
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  z-index:9999;
+  padding:20px;
+}
+
+.modal-box,
+.modal-card{
+  width:100%;
+  max-width:380px;
+  background:#fff;
+  border-radius:18px;
+  padding:28px 24px;
+  text-align:center;
+  box-shadow:0 20px 40px rgba(0,0,0,0.18);
+}
+
+.modal-title{
+  font-size:20px;
+  margin-bottom:14px;
+  color:#262626;
+}
+
+.modal-text{
+  line-height:1.7;
+  margin-bottom:18px;
+  color:#444;
+}
+
+.lock-banner{
+  margin:14px 0;
+  padding:14px 16px;
+  border-radius:12px;
+  background:#fee2e2;
+  color:#991b1b;
+  font-size:14px;
+  font-weight:600;
 }
 
 .identity-badge{
@@ -305,88 +480,186 @@ textarea:focus{
   margin-bottom:14px;
   padding:8px 12px;
   border-radius:999px;
-  background:#f2efe7;
-  color:#4d5550;
+  background:#fafafa;
+  border:1px solid #efefef;
+  color:#555;
   font-size:13px;
 }
 
-.timer-box{
-  padding:12px 16px;
-  border-radius:14px;
-  background:#f6f4ee;
-  font-size:16px;
-  color:#314038;
-}
+@media (max-width: 900px){
+  .student-row{
+    grid-template-columns:32px 1fr;
+    gap:8px;
+  }
 
-.lock-banner{
-  margin:14px 0;
-  padding:14px 16px;
-  border-radius:14px;
-  background:#f5dfdf;
-  color:#7b3f3f;
-  font-size:14px;
-  font-weight:600;
-}
+  .row-head{
+    display:none;
+  }
 
-.modal-overlay{
-  position:fixed;
-  inset:0;
-  background:rgba(0,0,0,0.45);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  padding:20px;
-  z-index:9999;
-}
+  .student-row > div:nth-child(3),
+  .student-row > div:nth-child(4),
+  .student-row > div:nth-child(5),
+  .student-row > div:nth-child(6){
+    grid-column:2 / 3;
+  }
 
-.modal-card{
-  width:100%;
-  max-width:420px;
-  background:#fff;
-  border-radius:20px;
-  padding:28px 24px;
-  box-shadow:0 20px 40px rgba(0,0,0,0.18);
-  text-align:center;
-}
-
-.modal-card h3{
-  margin:0 0 12px 0;
-  font-size:24px;
-  color:#8b3d3d;
-}
-
-.modal-card p{
-  margin:0;
-  line-height:1.8;
-  white-space:pre-line;
-  color:#3e4540;
-  font-size:16px;
-}
-
-.modal-buttons{
-  display:flex;
-  justify-content:center;
-  gap:10px;
-  flex-wrap:wrap;
-  margin-top:22px;
-}
-
-@media (max-width: 768px){
   .top-card{
     flex-direction:column;
     align-items:flex-start;
   }
 
-  .page-title{
-    font-size:24px;
-  }
-
-  .portal-card{
-    padding:32px 22px;
+  .list-header{
+    flex-direction:column;
+    align-items:flex-start;
   }
 
   #editor{
-    min-height:320px;
-    font-size:16px;
+    min-height:420px;
   }
+}
+.student-table{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+.row{
+  display:grid;
+  grid-template-columns:40px 1fr 1fr 1fr 2fr 1fr 1fr 1.2fr;
+  gap:12px;
+  align-items:center;
+  padding:14px;
+  border:1px solid #eee;
+  border-radius:12px;
+  background:white;
+}
+
+.row.header{
+  font-weight:700;
+  background:#fafafa;
+}
+
+.status-col{
+  display:flex;
+  gap:6px;
+  flex-wrap:wrap;
+}
+
+.badge{
+  font-size:12px;
+  padding:4px 8px;
+  border-radius:999px;
+  font-weight:600;
+}
+
+.badge.green{
+  background:#dcfce7;
+  color:#166534;
+}
+
+.badge.red{
+  background:#fee2e2;
+  color:#991b1b;
+}
+
+.badge.orange{
+  background:#ffedd5;
+  color:#9a3412;
+}
+
+.badge.blue{
+  background:#dbeafe;
+  color:#1d4ed8;
+}
+
+.badge.gray{
+  background:#f3f4f6;
+  color:#555;
+}
+
+.btn-main{
+  background:#4f46e5;
+  color:white;
+  border:none;
+  padding:8px 12px;
+  border-radius:8px;
+  cursor:pointer;
+}
+
+.btn-done{
+  background:#eef2ff;
+  color:#4338ca;
+  border:1px solid #c7d2fe;
+  padding:8px 12px;
+  border-radius:8px;
+}
+
+.btn-warning{
+  background:white;
+  border:1px solid #f59e0b;
+  color:#b45309;
+  padding:8px 12px;
+  border-radius:8px;
+}
+
+.task-buttons{
+  display:flex;
+  gap:8px;
+}
+
+.btn-link{
+  font-size:13px;
+  color:#555;
+  text-decoration:none;
+}
+
+.class-row{
+display:grid;
+grid-template-columns:1fr 2fr 1fr 1fr auto;
+gap:12px;
+align-items:end;
+margin-bottom:15px;
+}
+
+.class-row label{
+font-size:13px;
+color:#666;
+}
+
+.class-actions{
+display:flex;
+gap:10px;
+margin-bottom:20px;
+}
+
+.btn-main{
+background:#4f46e5;
+color:white;
+border:none;
+padding:8px 14px;
+border-radius:8px;
+cursor:pointer;
+}
+
+.btn-done{
+background:#e0e7ff;
+color:#3730a3;
+border:1px solid #c7d2fe;
+padding:8px 14px;
+border-radius:8px;
+}
+
+.btn-warning{
+background:white;
+border:1px solid #f59e0b;
+color:#b45309;
+padding:8px 14px;
+border-radius:8px;
+}
+
+.btn-link{
+border:1px solid #ddd;
+padding:5px 10px;
+border-radius:6px;
+font-size:13px;
 }
