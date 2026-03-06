@@ -10,6 +10,10 @@ const PORT = 3000;
 app.use(express.static('public'));
 app.set('view engine', 'ejs');
 app.use(bodyParser.urlencoded({ extended: true }));
+app.use(express.json());
+
+// 간단 로그인 상태 변수
+let isLoggedIn = false;
 
 // Load config
 const configPath = path.join(__dirname, 'config.json');
@@ -35,7 +39,9 @@ app.get('/login', (req, res) => {
 // 로그인 처리
 app.post('/login', (req, res) => {
   const { id, pw } = req.body;
+
   if (id === 'admin' && pw === 'test') {
+    isLoggedIn = true;
     res.redirect('/');
   } else {
     res.render('login', { error: 'ID 또는 PW가 틀렸습니다.' });
@@ -44,21 +50,36 @@ app.post('/login', (req, res) => {
 
 // 글쓰기 페이지
 app.get('/', (req, res) => {
-  res.redirect('/login');
+  res.render('index', { title: config.title });
 });
 
 // 글 제출
 app.post('/submit', (req, res) => {
+  if (!isLoggedIn) {
+    return res.redirect('/login');
+  }
+
   const content = req.body.content || '';
-  const entry = { content, date: new Date().toLocaleString() };
+  const entry = {
+    content,
+    date: new Date().toLocaleString()
+  };
+
   submissions.push(entry);
   fs.writeFileSync(dataPath, JSON.stringify(submissions, null, 2));
+
   res.send('제출 완료!');
 });
 
 // 관리자 페이지
 app.get('/admin', (req, res) => {
+  if (!isLoggedIn) {
+    return res.redirect('/login');
+  }
+
   res.render('admin', { submissions });
 });
 
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});

@@ -3,18 +3,147 @@
 <head>
 <meta charset="UTF-8">
 <title><%= title %></title>
-<link rel="stylesheet" href="/style.css">
-</head>
-<body>
-  <h1><%= title %></h1>
-  <textarea id="editor" placeholder="여기에 글 작성"></textarea>
-  <div>
-    <span id="charCount">0</span> 글자
-    <span id="timer">00:00</span>
-  </div>
-  <button id="saveBtn">임시저장</button>
-  <button id="submitBtn">제출</button>
 
-<script src="/script.js"></script>
+<style>
+
+body{
+    margin:0;
+    background:#f5f6fa;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+.container{
+    max-width:900px;
+    margin:60px auto;
+    background:white;
+    padding:40px;
+    border-radius:10px;
+    box-shadow:0 5px 15px rgba(0,0,0,0.1);
+}
+
+h1{
+    text-align:center;
+    margin-bottom:30px;
+}
+
+textarea{
+    width:100%;
+    height:350px;
+    font-size:16px;
+    padding:15px;
+    border:1px solid #ddd;
+    border-radius:6px;
+    resize:none;
+}
+
+.info{
+    display:flex;
+    justify-content:space-between;
+    margin-top:10px;
+    color:#555;
+}
+
+.buttons{
+    margin-top:25px;
+    text-align:center;
+}
+
+button{
+    padding:10px 25px;
+    font-size:15px;
+    border:none;
+    border-radius:5px;
+    margin:5px;
+    cursor:pointer;
+}
+
+.save{
+    background:#999;
+    color:white;
+}
+
+.submit{
+    background:#2d8cff;
+    color:white;
+}
+
+.submit:hover{
+    background:#1c6ed5;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h1><%= title %></h1>
+
+<form method="POST" action="/submit">
+
+<textarea id="editor" name="content" placeholder="여기에 글을 작성하세요"></textarea>
+
+<div class="info">
+<div id="charCount">0 자</div>
+<div id="timer">남은 시간: 60:00</div>
+</div>
+
+<div class="buttons">
+<button type="button" class="save" onclick="saveDraft()">임시저장</button>
+<button type="submit" class="submit">제출</button>
+</div>
+
+</form>
+
+</div>
+
+<script>
+
+const textarea = document.getElementById("editor");
+const charCount = document.getElementById("charCount");
+
+textarea.addEventListener("input", () => {
+    charCount.innerText = textarea.value.length + " 자";
+});
+
+function saveDraft(){
+    localStorage.setItem("draft", textarea.value);
+    alert("임시저장되었습니다");
+}
+
+window.onload = () => {
+    const draft = localStorage.getItem("draft");
+    if(draft){
+        textarea.value = draft;
+        charCount.innerText = draft.length + " 자";
+    }
+}
+
+let time = 60 * 60;
+
+function updateTimer(){
+    let min = Math.floor(time / 60);
+    let sec = time % 60;
+
+    if(sec < 10){
+        sec = "0" + sec;
+    }
+
+    document.getElementById("timer").innerText =
+        "남은 시간: " + min + ":" + sec;
+
+    time--;
+
+    if(time < 0){
+        alert("시험 시간이 종료되었습니다.");
+        document.forms[0].submit();
+    }
+}
+
+setInterval(updateTimer,1000);
+
+</script>
+
 </body>
 </html>
