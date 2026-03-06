@@ -20,16 +20,17 @@
 
 <hr>
 
-<h3>학생 추가</h3>
+<h3>학생 명단 입력</h3>
 
-<form method="POST" action="/addStudent">
+<p>엑셀에서 복사하여 붙여넣으세요</p>
+<p>형식: 이름,학번</p>
 
-이름
-<input name="name">
+<form method="POST" action="/addStudents">
 
-학번
-<input name="studentId">
+<textarea name="list" rows="10" style="width:400px;"></textarea>
 
-<button>추가</button>
+<br><br>
+
+<button type="submit">학생 등록</button>
 
 </form>

@@ -178,15 +178,30 @@ req.session.admin = true
 
 
 
-app.post("/addStudent",(req,res)=>{
+app.post("/addStudents",(req,res)=>{
 
- const {name,studentId} = req.body
+ const list = req.body.list
 
  let students = readJSON("students.json")
 
- students.push({
-  name,
-  studentId
+ const lines = list.split("\n")
+
+ lines.forEach(line=>{
+
+  const parts = line.split(",")
+
+  if(parts.length >= 2){
+
+   const name = parts[0].trim()
+   const studentId = parts[1].trim()
+
+   students.push({
+    name,
+    studentId
+   })
+
+  }
+
  })
 
  writeJSON("students.json",students)
