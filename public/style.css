@@ -1,18 +1,289 @@
+*{
+  box-sizing:border-box;
+}
+
 body{
-font-family: Pretendard, sans-serif;
-background:#f4f6f8;
+  margin:0;
+  font-family: Arial, Helvetica, sans-serif;
+  color:#262626;
+  background:linear-gradient(180deg,#fafafa 0%, #f4f4f8 100%);
 }
 
-textarea{
-width:900px;
-height:400px;
-display:block;
-margin:auto;
-padding:20px;
-font-size:16px;
+.center-page{
+  min-height:100vh;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  padding:24px;
 }
 
-button{
-padding:10px 20px;
-margin:10px;
+.portal-card{
+  width:100%;
+  max-width:420px;
+  background:#ffffff;
+  border:1px solid #dbdbdb;
+  border-radius:24px;
+  padding:40px 32px;
+  box-shadow:0 20px 40px rgba(0,0,0,0.06);
+  text-align:center;
+}
+
+.brand-mark{
+  width:64px;
+  height:64px;
+  margin:0 auto 20px auto;
+  border-radius:20px;
+  background:linear-gradient(135deg,#833ab4,#fd1d1d,#fcb045);
+  color:#fff;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:28px;
+  font-weight:700;
+}
+
+.portal-title{
+  margin:0 0 10px 0;
+  font-size:28px;
+  font-weight:700;
+}
+
+.portal-subtitle{
+  margin:0 0 24px 0;
+  color:#737373;
+  font-size:14px;
+  line-height:1.6;
+}
+
+.portal-form{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+
+.portal-form input{
+  width:100%;
+  padding:14px 16px;
+  border:1px solid #dbdbdb;
+  border-radius:12px;
+  font-size:15px;
+  outline:none;
+  background:#fafafa;
+}
+
+.portal-form input:focus{
+  border-color:#a8a8a8;
+  background:#fff;
+}
+
+.primary-btn,
+.ghost-btn,
+.danger-btn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:12px 18px;
+  border:none;
+  border-radius:12px;
+  font-size:15px;
+  font-weight:600;
+  text-decoration:none;
+  cursor:pointer;
+}
+
+.primary-btn{
+  background:linear-gradient(135deg,#4f46e5,#7c3aed);
+  color:#fff;
+}
+
+.primary-btn:hover{
+  opacity:0.95;
+}
+
+.ghost-btn{
+  background:#f3f4f6;
+  color:#111827;
+  border:1px solid #e5e7eb;
+}
+
+.danger-btn{
+  background:#ef4444;
+  color:#fff;
+}
+
+.text-link{
+  display:inline-block;
+  margin-top:18px;
+  color:#4b5563;
+  text-decoration:none;
+  font-size:14px;
+}
+
+.app-page{
+  min-height:100vh;
+  padding:32px 20px 48px 20px;
+}
+
+.app-shell{
+  width:100%;
+  max-width:980px;
+  margin:0 auto;
+}
+
+.top-card,
+.panel-card{
+  background:#ffffff;
+  border:1px solid #ececec;
+  border-radius:24px;
+  box-shadow:0 16px 32px rgba(0,0,0,0.05);
+  padding:28px;
+  margin-bottom:20px;
+}
+
+.top-card{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:20px;
+}
+
+.small-label{
+  font-size:13px;
+  color:#6b7280;
+  margin-bottom:6px;
+}
+
+.page-title{
+  margin:0;
+  font-size:30px;
+  font-weight:700;
+}
+
+.meta-line{
+  margin-top:8px;
+  color:#6b7280;
+  font-size:14px;
+}
+
+.section-title{
+  margin:0 0 16px 0;
+  font-size:22px;
+}
+
+.stack-form{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+.stack-form input,
+.stack-form textarea{
+  width:100%;
+  padding:14px 16px;
+  border:1px solid #dbdbdb;
+  border-radius:14px;
+  font-size:15px;
+  background:#fafafa;
+  outline:none;
+}
+
+.stack-form textarea{
+  resize:vertical;
+}
+
+.stack-form input:focus,
+.stack-form textarea:focus{
+  background:#fff;
+  border-color:#a8a8a8;
+}
+
+.action-row{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+}
+
+.margin-top{
+  margin-top:14px;
+}
+
+.help-text{
+  color:#6b7280;
+  font-size:14px;
+  line-height:1.6;
+}
+
+.status-box{
+  margin-top:16px;
+  padding:14px 16px;
+  background:#f9fafb;
+  border-radius:14px;
+  font-size:14px;
+}
+
+.student-card{
+  border:1px solid #ececec;
+  border-radius:18px;
+  padding:18px;
+  margin-bottom:16px;
+  background:#fcfcfc;
+}
+
+.student-top{
+  display:flex;
+  flex-wrap:wrap;
+  gap:12px;
+  margin-bottom:14px;
+  font-size:14px;
+}
+
+.topic-box{
+  padding:16px;
+  background:#f9fafb;
+  border-radius:14px;
+  font-size:16px;
+  line-height:1.7;
+}
+
+.count-box{
+  margin:16px 0 12px 0;
+  color:#4b5563;
+  font-size:14px;
+}
+
+#editor{
+  width:100%;
+  min-height:420px;
+  padding:18px;
+  border:1px solid #dbdbdb;
+  border-radius:16px;
+  background:#fff;
+  font-size:16px;
+  line-height:1.8;
+  outline:none;
+}
+
+.identity-badge{
+  display:inline-block;
+  margin-bottom:14px;
+  padding:8px 12px;
+  border-radius:999px;
+  background:#f3f4f6;
+  color:#374151;
+  font-size:13px;
+}
+
+@media (max-width: 768px){
+  .top-card{
+    flex-direction:column;
+    align-items:flex-start;
+  }
+
+  .page-title{
+    font-size:24px;
+  }
+
+  .portal-card{
+    padding:32px 22px;
+  }
 }

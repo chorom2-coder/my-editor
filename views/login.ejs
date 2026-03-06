@@ -1,13 +1,23 @@
-<h2>글쓰기 시험 로그인</h2>
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>글쓰기 포털</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body class="center-page">
 
-<form method="POST" action="/login">
+  <div class="portal-card">
+    <div class="brand-mark">W</div>
+    <h1 class="portal-title">Writing Exam Portal</h1>
+    <p class="portal-subtitle">이름과 학번을 입력하세요.</p>
 
-이름 <input name="name"><br>
+    <form method="POST" action="/login" class="portal-form">
+      <input name="name" placeholder="이름" required>
+      <input name="id" placeholder="학번" required>
+      <button type="submit" class="primary-btn">들어가기</button>
+    </form>
+  </div>
 
-학번 / 관리자ID <input name="id"><br>
-
-관리자 비밀번호 <input name="password" type="password"><br>
-
-<button>로그인</button>
-
-</form>
+</body>
+</html>

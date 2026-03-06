@@ -1,36 +1,117 @@
-<h2>관리자 페이지</h2>
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>관리자 페이지</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body class="app-page">
 
-<h3>주제 설정</h3>
+<div class="app-shell">
+  <div class="top-card">
+    <div>
+      <div class="small-label">로그인 사용자</div>
+      <h1 class="page-title"><%= adminName %></h1>
+      <div class="meta-line">
+        계정: <strong><%= adminId %></strong> /
+        권한: <strong><%= adminRole === "super" ? "초관리자" : "교수자 관리자" %></strong>
+      </div>
+    </div>
 
-<form method="POST" action="/setTopic">
+    <div class="action-row">
+      <a class="ghost-btn" href="/csv">CSV 다운로드</a>
+      <a class="danger-btn" href="/logout">로그아웃</a>
+    </div>
+  </div>
 
-주제
-<input name="topic">
+  <div class="panel-card">
+    <h2 class="section-title">설정</h2>
 
-최소 글자수
-<input name="minChars">
+    <form method="POST" action="/setTopic" class="stack-form">
+      <label>주제</label>
+      <input
+        type="text"
+        name="topic"
+        value="<%= config.topic || '' %>"
+        required
+      >
 
-<button>저장</button>
+      <label>최소 글자수</label>
+      <input
+        type="number"
+        name="minChars"
+        value="<%= config.minChars || 500 %>"
+        required
+      >
 
-</form>
+      <button type="submit" class="primary-btn">설정 저장</button>
+    </form>
 
-<form method="POST" action="/startExam">
-<button>시험 시작</button>
-</form>
+    <div class="action-row margin-top">
+      <form method="POST" action="/startExam">
+        <button type="submit" class="primary-btn">시작</button>
+      </form>
 
-<hr>
+      <form method="POST" action="/stopExam">
+        <button type="submit" class="ghost-btn">종료</button>
+      </form>
+    </div>
 
-<h3>학생 명단 입력</h3>
+    <div class="status-box">
+      현재 상태:
+      <strong><%= config.examStarted ? "진행중" : "대기중" %></strong>
+    </div>
+  </div>
 
-<p>엑셀에서 복사하여 붙여넣으세요</p>
-<p>형식: 이름,학번</p>
+  <div class="panel-card">
+    <h2 class="section-title">학생 명단 입력</h2>
+    <p class="help-text">엑셀에서 복사해 붙여넣으세요. 형식: 이름,학번,분반</p>
 
-<form method="POST" action="/addStudents">
+    <form method="POST" action="/addStudents" class="stack-form">
+      <textarea
+        name="list"
+        rows="8"
+        placeholder="김영희,2024001,A&#10;박민수,2024002,B"
+        required
+      ><%= config.studentListRaw || '' %></textarea>
 
-<textarea name="list" rows="10" style="width:400px;"></textarea>
+      <button type="submit" class="primary-btn">학생 등록</button>
+    </form>
+  </div>
 
-<br><br>
+  <div class="panel-card">
+    <h2 class="section-title">등록된 학생 / 제출 현황</h2>
 
-<button type="submit">학생 등록</button>
+    <% if (students.length === 0) { %>
+      <p class="help-text">등록된 학생이 없습니다.</p>
+    <% } %>
 
-</form>
+    <% students.forEach(student => { 
+         const sub = submissions[student.studentId] || {}
+    %>
+      <div class="student-card">
+        <div class="student-top">
+          <strong><%= student.name %></strong>
+          <span>학번: <%= student.studentId %></span>
+          <span>분반: <%= student.class || "-" %></span>
+          <span>상태: <%= sub.submitted ? "제출완료" : "미제출" %></span>
+        </div>
+
+        <div class="stack-form">
+          <label>제출 글</label>
+          <textarea readonly rows="8"><%= sub.text || "" %></textarea>
+
+          <form method="POST" action="/comment" class="stack-form">
+            <input type="hidden" name="studentId" value="<%= student.studentId %>">
+            <label>코멘트</label>
+            <textarea name="comment" rows="4" placeholder="코멘트를 입력하세요"><%= sub.comment || "" %></textarea>
+            <button type="submit" class="primary-btn">코멘트 저장</button>
+          </form>
+        </div>
+      </div>
+    <% }) %>
+  </div>
+</div>
+
+</body>
+</html>

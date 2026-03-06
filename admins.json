@@ -1,4 +1,4 @@
 [
- { "id":"admin","password":"1234","role":"super" },
- { "id":"prof1","password":"1234","role":"prof" }
+ { "id":"admin","password":"1234","role":"super", "name": "생성관리자" },
+ { "id":"prof1","password":"1234","role":"prof", "name": "박보연 교수" }
 ]

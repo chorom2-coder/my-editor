@@ -1,22 +1,46 @@
-<h2><%= topic %></h2>
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>글쓰기</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body class="app-page">
 
-<textarea id="editor"><%= text %></textarea>
+<div class="app-shell">
+  <div class="top-card">
+    <div>
+      <div class="small-label">작성자</div>
+      <h1 class="page-title"><%= studentName %></h1>
+      <div class="meta-line">
+        <%= studentClass ? "분반: " + studentClass : "" %>
+      </div>
+    </div>
+  </div>
 
-<div>
+  <div class="panel-card">
+    <h2 class="section-title">주제</h2>
+    <div class="topic-box"><%= topic %></div>
 
-공백포함 <span id="withSpace">0</span> /
-공백제외 <span id="withoutSpace">0</span>
+    <div class="count-box">
+      공백 포함 <strong><span id="withSpace">0</span></strong> /
+      공백 제외 <strong><span id="withoutSpace">0</span></strong> /
+      최소 글자수 <strong><%= minChars %></strong>
+    </div>
 
+    <textarea id="editor"><%= text %></textarea>
+
+    <div class="action-row">
+      <button type="button" class="primary-btn" onclick="manualSave()">임시저장</button>
+      <button type="button" class="danger-btn" onclick="submitExam()">제출</button>
+    </div>
+  </div>
 </div>
 
-<button onclick="save()">임시저장</button>
-<button onclick="submitExam()">제출</button>
-
 <script>
-
-const id="<%= id %>"
-const minChars=<%= minChars %>
-
+  const id = "<%= id %>"
+  const minChars = <%= minChars %>
 </script>
-
 <script src="/editor.js"></script>
+</body>
+</html>
