@@ -89,7 +89,6 @@ app.get('/admin', (req, res) => {
   if (!isLoggedIn) {
     return res.redirect('/login');
   }
-<<<<<<< HEAD
 
   res.render('admin', { submissions });
 });
@@ -97,9 +96,3 @@ app.get('/admin', (req, res) => {
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
-=======
-  res.render('admin', { submissions });
-});
-
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
->>>>>>> dbfcb2bb5ac689bfd01c80f96e6d58ac8ef0a1be
