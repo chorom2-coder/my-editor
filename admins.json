@@ -1,0 +1,4 @@
+[
+ { "id":"admin","password":"1234","role":"super" },
+ { "id":"prof1","password":"1234","role":"prof" }
+]

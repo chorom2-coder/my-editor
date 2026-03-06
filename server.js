@@ -1,195 +1,196 @@
-const express = require('express');
-const fs = require('fs');
-const bodyParser = require('body-parser');
-const path = require('path');
+const express = require("express")
+const fs = require("fs")
+const bodyParser = require("body-parser")
 
-const app = express();
-const PORT = process.env.PORT || 3000;
+const app = express()
+const PORT = process.env.PORT || 3000
 
-app.use(express.static('public'));
-app.set('view engine', 'ejs');
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use(express.json());
+app.set("view engine","ejs")
+app.use(bodyParser.urlencoded({extended:true}))
+app.use(bodyParser.json())
+app.use(express.static("public"))
 
-let currentUser = null;
-
-// 파일 경로
-const studentsPath = path.join(__dirname, 'students.json');
-const submissionsPath = path.join(__dirname, 'submissions.json');
-const configPath = path.join(__dirname, 'config.json');
-
-// 데이터 로드
-let students = fs.existsSync(studentsPath) ? JSON.parse(fs.readFileSync(studentsPath)) : [];
-let submissions = fs.existsSync(submissionsPath) ? JSON.parse(fs.readFileSync(submissionsPath)) : [];
-
-let config = {
-  title: "글쓰기 시험",
-  topic: "주제를 입력하세요",
-  minChars: 500
-};
-
-if (fs.existsSync(configPath)) {
-  config = JSON.parse(fs.readFileSync(configPath));
+function readJSON(file){
+ if(!fs.existsSync(file)) return {}
+ return JSON.parse(fs.readFileSync(file))
 }
 
-// 로그인 페이지
-app.get('/login', (req, res) => {
-  res.render('login', { title: config.title });
-});
+function writeJSON(file,data){
+ fs.writeFileSync(file,JSON.stringify(data,null,2))
+}
 
-// 로그인 처리
-app.post('/login', (req, res) => {
+app.get("/",(req,res)=>{
+ res.redirect("/login")
+})
 
-  const { name, studentId } = req.body;
+app.get("/login",(req,res)=>{
+ res.render("login")
+})
 
-  const student = students.find(s =>
-    s.name === name && s.studentId === studentId
-  );
+app.post("/login",(req,res)=>{
 
-  if (!student) {
-    return res.send("명단에 없습니다.");
+ const {name,id,password} = req.body
+
+ const admins = readJSON("admins.json")
+
+ const admin = admins.find(a=>a.id===id && a.password===password)
+
+ if(admin){
+  return res.redirect("/admin")
+ }
+
+ const students = readJSON("students.json")
+
+ const student = students.find(s=>s.studentId===id && s.name===name)
+
+ if(!student){
+  return res.send("학생 정보 없음")
+ }
+
+ let submissions = readJSON("submissions.json")
+
+ if(!submissions[id]){
+  submissions[id] = {
+   name:name,
+   text:"",
+   submitted:false,
+   comment:""
   }
+ }
 
-  currentUser = student;
+ writeJSON("submissions.json",submissions)
 
-  res.redirect('/write');
-});
+ res.redirect("/waiting/"+id)
 
-// 글쓰기 페이지
-app.get('/write', (req, res) => {
+})
 
-  if (!currentUser) {
-    return res.redirect('/login');
-  }
+app.get("/waiting/:id",(req,res)=>{
 
-  const existing = submissions.find(s =>
-    s.studentId === currentUser.studentId
-  );
+ const config = readJSON("config.json")
 
-  res.render('write', {
-    user: currentUser,
-    config,
-    submission: existing
-  });
-});
+ if(config.examStarted){
+  return res.redirect("/write/"+req.params.id)
+ }
 
-// 자동 저장
-app.post('/autosave', (req, res) => {
+ res.send(`
+ <h2>시험 대기중입니다</h2>
+ <script>
+ setInterval(()=>{
+  location.reload()
+ },3000)
+ </script>
+ `)
 
-  if (!currentUser) return res.sendStatus(401);
+})
 
-  const { content } = req.body;
+app.get("/write/:id",(req,res)=>{
 
-  let sub = submissions.find(s => s.studentId === currentUser.studentId);
+ const id = req.params.id
+ const submissions = readJSON("submissions.json")
+ const config = readJSON("config.json")
 
-  if (!sub) {
-    sub = {
-      name: currentUser.name,
-      studentId: currentUser.studentId,
-      class: currentUser.class,
-      content: "",
-      comment: "",
-      submitted: false
-    };
-    submissions.push(sub);
-  }
+ res.render("write",{
+  id,
+  topic:config.topic,
+  minChars:config.minChars,
+  text:submissions[id]?.text || ""
+ })
 
-  if (!sub.submitted) {
-    sub.content = content;
-  }
+})
 
-  fs.writeFileSync(submissionsPath, JSON.stringify(submissions, null, 2));
+app.post("/autosave",(req,res)=>{
 
-  res.sendStatus(200);
-});
+ const {id,text} = req.body
 
-// 제출
-app.post('/submit', (req, res) => {
+ const submissions = readJSON("submissions.json")
 
-  if (!currentUser) return res.redirect('/login');
+ if(submissions[id]?.submitted){
+  return res.json({ok:false})
+ }
 
-  const { content } = req.body;
+ submissions[id].text = text
 
-  const clean = content.replace(/\s/g, "");
+ writeJSON("submissions.json",submissions)
 
-  if (clean.length < config.minChars) {
-    return res.send("최소 글자수 미달입니다.");
-  }
+ res.json({ok:true})
 
-  let sub = submissions.find(s => s.studentId === currentUser.studentId);
+})
 
-  if (!sub) {
-    sub = {
-      name: currentUser.name,
-      studentId: currentUser.studentId,
-      class: currentUser.class,
-      comment: ""
-    };
-    submissions.push(sub);
-  }
+app.post("/submit",(req,res)=>{
 
-  sub.content = content;
-  sub.submitted = true;
-  sub.date = new Date().toLocaleString();
+ const {id,text} = req.body
+ const config = readJSON("config.json")
 
-  fs.writeFileSync(submissionsPath, JSON.stringify(submissions, null, 2));
+ const count = text.replace(/\s/g,"").length
 
-  res.render('result');
-});
+ if(count < config.minChars){
+  return res.json({ok:false,msg:"글자수가 부족합니다"})
+ }
 
-// 관리자 페이지
-app.get('/admin', (req, res) => {
+ const submissions = readJSON("submissions.json")
 
-  res.render('admin', {
-    submissions,
-    config
-  });
-});
+ submissions[id].text = text
+ submissions[id].submitted = true
 
-// 관리자 코멘트
-app.post('/comment', (req, res) => {
+ writeJSON("submissions.json",submissions)
 
-  const { studentId, comment } = req.body;
+ res.json({ok:true})
 
-  const sub = submissions.find(s => s.studentId === studentId);
+})
 
-  if (sub) {
-    sub.comment = comment;
-  }
+app.get("/admin",(req,res)=>{
 
-  fs.writeFileSync(submissionsPath, JSON.stringify(submissions, null, 2));
+ const students = readJSON("students.json")
+ const submissions = readJSON("submissions.json")
+ const config = readJSON("config.json")
 
-  res.redirect('/admin');
-});
+ res.render("admin",{students,submissions,config})
 
-// 설정 저장
-app.post('/config', (req, res) => {
+})
 
-  config.topic = req.body.topic;
-  config.minChars = parseInt(req.body.minChars);
+app.post("/addStudent",(req,res)=>{
 
-  fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+ const {name,studentId} = req.body
 
-  res.redirect('/admin');
-});
+ let students = readJSON("students.json")
 
-app.listen(PORT, () => {
-  console.log("Server running on port " + PORT);
-});
+ students.push({
+  name,
+  studentId
+ })
 
-app.get('/download', (req, res) => {
+ writeJSON("students.json",students)
 
-let csv = "name,studentId,class,content,comment,date\n";
+ res.redirect("/admin")
 
-submissions.forEach(s => {
+})
 
-csv += `"${s.name}","${s.studentId}","${s.class}","${s.content}","${s.comment}","${s.date}"\n`;
+app.post("/setTopic",(req,res)=>{
 
-});
+ const {topic,minChars} = req.body
 
-res.header('Content-Type','text/csv');
-res.attachment('submissions.csv');
+ writeJSON("config.json",{
+  topic,
+  minChars:Number(minChars),
+  examStarted:false
+ })
 
-return res.send(csv);
+ res.redirect("/admin")
 
-});
+})
+
+app.post("/startExam",(req,res)=>{
+
+ const config = readJSON("config.json")
+
+ config.examStarted = true
+
+ writeJSON("config.json",config)
+
+ res.redirect("/admin")
+
+})
+
+app.listen(PORT,()=>{
+ console.log("server running")
+})

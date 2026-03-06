@@ -1,47 +1,35 @@
-<a href="/download">
-<button>CSV 다운로드</button>
-</a>
+<h2>관리자 페이지</h2>
 
-<h1>관리자</h1>
+<h3>주제 설정</h3>
 
-<h2>주제 설정</h2>
+<form method="POST" action="/setTopic">
 
-<form method="POST" action="/config">
+주제
+<input name="topic">
 
-주제  
-<textarea name="topic"><%= config.topic %></textarea>
+최소 글자수
+<input name="minChars">
 
-최소 글자수  
-<input name="minChars" value="<%= config.minChars %>">
+<button>저장</button>
 
-<button type="submit">저장</button>
+</form>
 
+<form method="POST" action="/startExam">
+<button>시험 시작</button>
 </form>
 
 <hr>
 
-<h2>제출 글</h2>
+<h3>학생 추가</h3>
 
-<% submissions.forEach(s=>{ %>
+<form method="POST" action="/addStudent">
 
-<div>
+이름
+<input name="name">
 
-<b><%= s.name %></b> (<%= s.studentId %>)  
+학번
+<input name="studentId">
 
-<pre><%= s.content %></pre>
-
-<form method="POST" action="/comment">
-
-<input type="hidden" name="studentId" value="<%= s.studentId %>">
-
-<textarea name="comment"><%= s.comment %></textarea>
-
-<button type="submit">코멘트 저장</button>
+<button>추가</button>
 
 </form>
-
-</div>
-
-<hr>
-
-<% }) %>

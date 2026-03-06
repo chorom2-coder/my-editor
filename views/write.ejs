@@ -1,17 +1,22 @@
-<h2><%= config.topic %></h2>
+<h2><%= topic %></h2>
+
+<textarea id="editor"><%= text %></textarea>
 
 <div>
-분량: <%= config.minChars %>자 이상  
-현재 글자수 : <span id="count">0</span>  
-(공백 미포함: <span id="count2">0</span>)
+
+공백포함 <span id="withSpace">0</span> /
+공백제외 <span id="withoutSpace">0</span>
+
 </div>
 
-<form method="POST" action="/submit" onsubmit="return confirmSubmit()">
+<button onclick="save()">임시저장</button>
+<button onclick="submitExam()">제출</button>
 
-<textarea id="editor" name="content" rows="15"><%= submission ? submission.content : "" %></textarea>
+<script>
 
-<button type="submit">제출</button>
+const id="<%= id %>"
+const minChars=<%= minChars %>
 
-</form>
+</script>
 
 <script src="/editor.js"></script>

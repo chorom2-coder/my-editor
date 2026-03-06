@@ -1,66 +1,13 @@
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<title><%= title %></title>
-
-<style>
-
-body{
-font-family:Arial;
-background:#f5f6fa;
-display:flex;
-justify-content:center;
-align-items:center;
-height:100vh;
-}
-
-.card{
-background:white;
-padding:40px;
-border-radius:10px;
-box-shadow:0 10px 30px rgba(0,0,0,0.1);
-width:320px;
-text-align:center;
-}
-
-input{
-width:100%;
-padding:10px;
-margin-top:10px;
-}
-
-button{
-margin-top:20px;
-width:100%;
-padding:10px;
-background:#3b82f6;
-color:white;
-border:none;
-border-radius:5px;
-font-size:16px;
-}
-
-</style>
-</head>
-
-<body>
-
-<div class="card">
-
-<h2><%= title %></h2>
+<h2>글쓰기 시험 로그인</h2>
 
 <form method="POST" action="/login">
 
-<input name="name" placeholder="이름">
+이름 <input name="name"><br>
 
-<input name="studentId" placeholder="학번">
+학번 / 관리자ID <input name="id"><br>
 
-<button type="submit">들어가기</button>
+관리자 비밀번호 <input name="password" type="password"><br>
+
+<button>로그인</button>
 
 </form>
-
-</div>
-
-</body>
-</html>

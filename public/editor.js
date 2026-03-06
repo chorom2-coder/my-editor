@@ -1,81 +1,74 @@
-const editor = document.getElementById("editor");
+const editor = document.getElementById("editor")
 
-function updateCount(){
+function count(){
 
-const text = editor.value;
-const noSpace = text.replace(/\s/g,'');
+let text = editor.value
 
-document.getElementById("count").innerText = text.length;
-document.getElementById("count2").innerText = noSpace.length;
+document.getElementById("withSpace").innerText = text.length
+document.getElementById("withoutSpace").innerText =
+text.replace(/\s/g,"").length
 
 }
 
-editor.addEventListener("input",updateCount);
+editor.addEventListener("input",count)
 
-/* 자동저장 */
-
-setInterval(()=>{
+function save(){
 
 fetch("/autosave",{
 method:"POST",
 headers:{'Content-Type':'application/json'},
 body:JSON.stringify({
-content:editor.value
+id,
+text:editor.value
 })
 })
 
-},30000)
-
-/* 제출 확인 */
-
-function confirmSubmit(){
-return confirm("제출 후 수정할 수 없습니다. 제출하시겠습니까?");
-}
-
-/* 복사 붙여넣기 차단 */
-
-document.addEventListener("copy",e=>{
-alert("복사는 허용되지 않습니다.");
-e.preventDefault();
-});
-
-document.addEventListener("paste",e=>{
-alert("붙여넣기는 허용되지 않습니다.");
-e.preventDefault();
-});
-
-/* 우클릭 차단 */
-
-document.addEventListener("contextmenu",e=>{
-e.preventDefault();
-});
-
-/* 외부창 탐지 */
-
-let warningCount = 0;
-
-window.addEventListener("blur",()=>{
-
-warningCount++;
-
-if(warningCount===1){
-
-alert("경고: 시험 중 다른 창으로 이동했습니다.");
+alert("임시저장 완료")
 
 }
 
-if(warningCount>=2){
+function submitExam(){
 
-alert("시험 입력이 1분간 잠깁니다.");
+let text = editor.value
+let count = text.replace(/\s/g,"").length
 
-editor.disabled = true;
+if(count < minChars){
 
-setTimeout(()=>{
+alert("최소 "+minChars+"자 이상 작성해야 합니다")
 
-editor.disabled = false;
-
-},60000);
+return
 
 }
 
-});
+fetch("/submit",{
+method:"POST",
+headers:{'Content-Type':'application/json'},
+body:JSON.stringify({
+id,
+text
+})
+}).then(r=>r.json()).then(d=>{
+
+if(d.ok){
+alert("제출 완료")
+location.reload()
+}else{
+alert(d.msg)
+}
+
+})
+
+}
+
+setInterval(save,10000)
+
+document.addEventListener("copy",e=>e.preventDefault())
+document.addEventListener("paste",e=>e.preventDefault())
+
+document.addEventListener("visibilitychange",()=>{
+
+if(document.hidden){
+alert("외부창 감지")
+}
+
+})
