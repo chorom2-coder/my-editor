@@ -1,6 +1,7 @@
 const express = require("express")
 const fs = require("fs")
 const bodyParser = require("body-parser")
+const session = require("express-session")
 
 const app = express()
 const PORT = process.env.PORT || 3000
@@ -9,6 +10,11 @@ app.set("view engine","ejs")
 app.use(bodyParser.urlencoded({extended:true}))
 app.use(bodyParser.json())
 app.use(express.static("public"))
+app.use(session({
+ secret:"exam-secret",
+ resave:false,
+ saveUninitialized:true
+}))
 
 function readJSON(file){
  if(!fs.existsSync(file)) return {}
@@ -139,7 +145,9 @@ app.post("/submit",(req,res)=>{
 })
 
 app.get("/admin",(req,res)=>{
-
+if(!req.session.admin){
+ return res.redirect("/admin-login")
+}
  const students = readJSON("students.json")
  const submissions = readJSON("submissions.json")
  const config = readJSON("config.json")
@@ -163,7 +171,7 @@ app.post("/admin-login",(req,res)=>{
  if(!admin){
   return res.send("관리자 로그인 실패")
  }
-
+req.session.admin = true
  res.redirect("/admin")
 
 })
