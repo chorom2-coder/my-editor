@@ -1,0 +1,17 @@
+<h2><%= config.topic %></h2>
+
+<div>
+분량: <%= config.minChars %>자 이상  
+현재 글자수 : <span id="count">0</span>  
+(공백 미포함: <span id="count2">0</span>)
+</div>
+
+<form method="POST" action="/submit" onsubmit="return confirmSubmit()">
+
+<textarea id="editor" name="content" rows="15"><%= submission ? submission.content : "" %></textarea>
+
+<button type="submit">제출</button>
+
+</form>
+
+<script src="/editor.js"></script>

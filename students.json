@@ -1,0 +1,5 @@
+[
+ { "name":"홍길동","studentId":"2024001","class":"A" },
+ { "name":"김영희","studentId":"2024002","class":"A" },
+ { "name":"박민수","studentId":"2024003","class":"B" }
+]

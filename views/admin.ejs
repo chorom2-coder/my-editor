@@ -1,59 +1,43 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-<meta charset="UTF-8">
-<title>관리자</title>
+<h1>관리자</h1>
 
-<style>
-body{
-font-family: Arial;
-margin:40px;
-}
+<h2>주제 설정</h2>
 
-table{
-border-collapse: collapse;
-width:100%;
-}
+<form method="POST" action="/config">
 
-th, td{
-border:1px solid #ccc;
-padding:10px;
-text-align:left;
-}
+주제  
+<textarea name="topic"><%= config.topic %></textarea>
 
-th{
-background:#f2f2f2;
-}
+최소 글자수  
+<input name="minChars" value="<%= config.minChars %>">
 
-</style>
+<button type="submit">저장</button>
 
-</head>
+</form>
 
-<body>
+<hr>
 
-<h1>제출 글 관리</h1>
+<h2>제출 글</h2>
 
-<table>
+<% submissions.forEach(s=>{ %>
 
-<tr>
-<th>이름</th>
-<th>학번</th>
-<th>작성시간</th>
-<th>내용</th>
-</tr>
+<div>
 
-<% submissions.forEach(sub => { %>
+<b><%= s.name %></b> (<%= s.studentId %>)  
 
-<tr>
-<td><%= sub.name %></td>
-<td><%= sub.studentId %></td>
-<td><%= sub.date %></td>
-<td><%= sub.content %></td>
-</tr>
+<pre><%= s.content %></pre>
+
+<form method="POST" action="/comment">
+
+<input type="hidden" name="studentId" value="<%= s.studentId %>">
+
+<textarea name="comment"><%= s.comment %></textarea>
+
+<button type="submit">코멘트 저장</button>
+
+</form>
+
+</div>
+
+<hr>
 
 <% }) %>
-
-</table>
-
-</body>
-</html>
