@@ -18,5 +18,32 @@
     "name": "박철수",
     "studentId": "2026004",
     "class": "화789"
+  },
+  {
+    "name": "이영희",
+    "studentId": "2025001",
+    "class": "화123"
+  },
+  {
+    "name": "이철수",
+    "studentId": "2025002",
+    "class": "화123"
+  },
+  {
+    "name": "아영희",
+    "studentId": "222",
+    "class": "목123"
+  },
+  {
+    "name": "prof1김영희",
+    "studentId": "prof11",
+    "class": "월",
+    "ownerId": "prof1"
+  },
+  {
+    "name": "prof1김철수",
+    "studentId": "prof12",
+    "class": "화",
+    "ownerId": "prof1"
   }
 ]

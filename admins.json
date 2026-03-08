@@ -1,4 +1,20 @@
 [
- { "id":"admin","password":"1234","role":"super", "name": "생성관리자" },
- { "id":"prof1","password":"1234","role":"prof", "name": "박보연 교수" }
+  {
+    "id": "admin",
+    "password": "1234",
+    "role": "super",
+    "name": "생성관리자"
+  },
+  {
+    "id": "prof1",
+    "password": "1234",
+    "role": "prof",
+    "name": "교수자"
+  },
+  {
+    "id": "prof3",
+    "password": "1234",
+    "role": "prof",
+    "name": "교수자3"
+  }
 ]

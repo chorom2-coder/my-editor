@@ -2,9 +2,9 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>대기 중</title>
-  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/style.css?v=50">
 </head>
 <body class="center-page">
   <div class="portal-card">
@@ -13,10 +13,23 @@
     <p class="portal-subtitle">시작되면 전체화면(Full Screen)으로 전환됩니다.</p>
   </div>
 
-  <script>
-    setInterval(function(){
-      location.reload()
-    }, 3000)
-  </script>
+<script>
+const studentId = "<%= studentId %>"
+
+setInterval(async function(){
+  const res = await fetch("/status/" + studentId)
+  const data = await res.json()
+
+  if(!data.ok) return
+
+  if(data.started){
+    if(data.submitted){
+      location.href = "/result/" + studentId
+    }else{
+      location.href = "/write/" + studentId
+    }
+  }
+}, 3000)
+</script>
 </body>
 </html>

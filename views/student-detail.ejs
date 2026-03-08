@@ -1,45 +1,111 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-  <title>학생 글 상세</title>
-  <link rel="stylesheet" href="/style.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>학생 제출물</title>
+<link rel="stylesheet" href="/style.css?v=60">
 </head>
+
 <body class="app-page">
+
 <div class="app-shell">
+
+  <% if (msg) { %>
+  <div class="flash-toast" id="flashToast"><%= msg %></div>
+  <% } %>
+
+  <!-- 학생 정보 -->
   <div class="top-card">
     <div>
       <div class="small-label">학생 정보</div>
       <h1 class="page-title"><%= student.name %></h1>
+
       <div class="meta-line">
-        학번: <%= student.studentId %> / 분반: <%= student.class || "-" %>
+        학번: <strong><%= student.studentId %></strong> /
+        분반: <strong><%= student.class || "-" %></strong>
       </div>
     </div>
+
     <div class="action-row">
-      <a class="subtle-btn" href="/admin">목록으로</a>
-      <a class="soft-btn" href="/download/student/<%= student.studentId %>">다운로드</a>
+      <a href="/admin" class="btn-outline">목록</a>
+      <a href="/download/student/<%= student.studentId %>" class="btn-outline">다운로드</a>
     </div>
   </div>
 
-  <div class="panel-card">
-    <h2 class="section-title">상태</h2>
-    <div class="status-box">
-      제출: <strong><%= submission.submitted ? "완료" : "미제출" %></strong> /
-      차단: <strong><%= submission.locked ? "차단" : "정상" %></strong> /
-      승인 요청: <strong><%= submission.approvalRequested ? "요청" : "없음" %></strong>
-    </div>
-  </div>
 
+  <!-- 제출 글 -->
   <div class="panel-card">
-    <h2 class="section-title">글 내용</h2>
+
+    <h2 class="section-title">제출 글</h2>
+
+    <!-- 메타 정보 -->
+    <div class="submission-meta">
+
+      <div>
+        <strong>제출 시각</strong><br>
+        <span><%= submission.submitTime || "-" %></span>
+      </div>
+
+      <div>
+        <strong>작성 소요시간</strong><br>
+        <span><%= submission.duration || "-" %></span>
+      </div>
+
+      <div>
+        <strong>글자수</strong><br>
+        <span>공백 포함 <%= submission.withSpace || 0 %> /
+        공백 제외 <%= submission.withoutSpace || 0 %></span>
+      </div>
+
+    </div>
+
     <textarea readonly rows="14"><%= submission.text || "" %></textarea>
+
   </div>
 
+
+  <!-- 코멘트 -->
   <div class="panel-card">
+
     <h2 class="section-title">코멘트</h2>
-    <textarea readonly rows="8"><%= submission.comment || "" %></textarea>
+
+    <form method="POST" action="/comment" class="stack-form">
+
+      <input type="hidden" name="studentId" value="<%= student.studentId %>">
+
+      <textarea name="comment" rows="8"><%= submission.comment || "" %></textarea>
+
+      <button type="submit" class="btn-main">코멘트 저장</button>
+
+    </form>
+
   </div>
+
 </div>
+
+
+<script>
+
+window.addEventListener("load", function(){
+
+  const toast = document.getElementById("flashToast")
+
+  if(toast){
+    setTimeout(function(){
+
+      toast.style.opacity = "0"
+
+      setTimeout(function(){
+        if(toast.parentNode) toast.parentNode.removeChild(toast)
+      },300)
+
+    },2000)
+  }
+
+})
+
+</script>
+
 </body>
 </html>

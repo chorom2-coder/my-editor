@@ -1,89 +1,445 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>관리자 페이지</title>
-<link rel="stylesheet" href="/style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>관리자 페이지</title>
+  <link rel="stylesheet" href="/style.css?v=80">
 </head>
+<body class="app-page">
 
-<body>
+<div class="app-shell">
 
-<h1>관리자 페이지</h1>
+  <% if (msg) { %>
+    <div class="flash-toast center" id="flashToast"><%= msg %></div>
+  <% } %>
 
-<p>로그인 사용자: <%= adminName %></p>
+  <div class="top-card">
+    <div class="admin-top-grid">
 
-<p>승인 요청: <%= approvalCount || 0 %> 명</p>
+      
+<div class="admin-identity">
+  <div class="small-label">로그인 사용자</div>
 
-<hr>
+  <div class="title-row">
+    <h1 class="page-title"><%= adminName %></h1>
+    <a href="/logout" class="btn-outline btn-sm">로그아웃</a>
+  </div>
 
-<h2>분반 설정</h2>
+  <div class="meta-line">
+    계정: <strong><%= adminId %></strong> /
+    권한: <strong><%= adminRole === "super" ? "초관리자" : "교수자 관리자" %></strong>
+  </div>
+</div>
+<div class="mini-password-card">
+   <form method="POST" action="/change-password" class="mini-password-form">
+    <span class="mini-password-title">비밀번호 변경</span>
+    <input type="password" name="currentPassword" placeholder="현재 비밀번호" required>
+    <input type="password" name="newPassword" placeholder="새 비밀번호" required>
+    <button type="submit" class="btn-outline btn-sm">변경</button>
+  </form>
+</div>
+</div>
 
-<form method="POST" action="/startClass">
-<input type="text" name="className" placeholder="분반 입력">
-<button type="submit">시작</button>
-</form>
+</div>
 
-<form method="POST" action="/stopClass">
-<input type="text" name="className" placeholder="분반 입력">
-<button type="submit">종료</button>
-</form>
 
-<hr>
 
-<h2>학생 목록</h2>
+<% if (adminRole === "super") { %>
+  <div class="panel-card">
+    <h2 class="section-title">교수자 추가</h2>
+    <form method="POST" action="/add-professor" class="stack-form">
+      <input name="name" placeholder="이름" required>
+      <input name="id" placeholder="교수자 ID" required>
+      <input name="password" placeholder="초기 비밀번호" required>
+      <button type="submit" class="btn-main">추가</button>
+    </form>
+  </div>
 
-<table border="1" cellpadding="8">
 
-<tr>
-<th>이름</th>
-<th>학번</th>
-<th>분반</th>
-<th>상태</th>
-<th>작업</th>
-</tr>
+<% if (adminRole === "super") { %>
+  <div class="dashboard-grid">
+    <div class="dashboard-card">
+      <div class="dashboard-label">총 교수자</div>
+      <div class="dashboard-value"><%= professorCount %></div>
+    </div>
 
-<% students.forEach(function(student){ %>
+    <div class="dashboard-card">
+      <div class="dashboard-label">총 분반</div>
+      <div class="dashboard-value"><%= totalClassCount %></div>
+    </div>
 
-<tr>
+    <div class="dashboard-card">
+      <div class="dashboard-label">총 학생</div>
+      <div class="dashboard-value"><%= totalStudentCount %></div>
+    </div>
 
-<td><%= student.name %></td>
-
-<td><%= student.studentId %></td>
-
-<td><%= student.class %></td>
-
-<td>
-
-<% const sub = submissions[student.studentId] || {} %>
-
-<% if(sub.submitted){ %>
-제출 완료
-<% } else { %>
-미제출
+    <div class="dashboard-card">
+      <div class="dashboard-label">총 제출</div>
+      <div class="dashboard-value"><%= totalSubmittedCount %></div>
+    </div>
+  </div>
 <% } %>
 
-<% if(sub.approvalRequested){ %>
- | 승인 요청
+  <div class="panel-card">
+    <div class="list-header stacked">
+      <h2 class="section-title single-line">교수자 관리</h2>
+
+
+
+      <% if (professorFilter) { %>
+        <div class="super-filter-row">
+
+  <div class="selected-professor-banner">
+  현재 선택 교수자
+<strong>
+<% const selectedProf = professorSummaries.find(p => p.id === professorFilter) %>
+<strong>
+  <%= selectedProf ? selectedProf.name + " (" + selectedProf.id + ")" : professorFilter %>
+</strong>
+</div>
+
+          <a href="/admin" class="btn-outline btn-sm">전체 교수자 보기</a>
+        </div>
+      <% } %>
+    </div>
+
+    <% if (professorSummaries && professorSummaries.length > 0) { %>
+      <div class="table-wrap">
+        <table class="student-table">
+          <thead>
+            <tr>
+              <th>교수자</th>
+              <th>ID</th>
+              <th>담당 분반</th>
+              <th>학생 수</th>
+              <th>제출 수</th>
+<th>제출률</th>
+              <th>관리</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% professorSummaries.forEach(function(prof){ %>
+              <tr>
+                <td class="student-name"><%= prof.name %></td>
+                <td><%= prof.id %></td>
+                <td><%= prof.classNames.length ? prof.classNames.join(", ") : "-" %></td>
+              <td><%= prof.studentCount %></td>
+<td><%= prof.submittedCount %></td>
+<td><%= prof.submitRate %>%</td>
+<td>
+  <div class="row-actions">
+    <a href="/admin?prof=<%= prof.id %>" class="btn-outline btn-sm">학생 보기</a>
+  </div>
+</td>
+
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    <% } else { %>
+      <p class="empty-text">등록된 교수자가 없습니다.</p>
+    <% } %>
+  </div>
+<% } %>
+<% if (adminRole !== "super") { %>
+  <div class="panel-card">
+    <h2 class="section-title">학생 명단 입력</h2>
+    <p class="help-text">형식: 이름, 학번, 분반 / 쉼표, 탭, 여러 칸 띄어쓰기 모두 가능</p>
+    <form method="POST" action="/addStudents" class="stack-form">
+      <textarea name="list" rows="8" required><%= studentListText || "" %></textarea>
+      <button type="submit" class="btn-main">등록</button>
+    </form>
+  </div>
+<% } %>
+<% if (adminRole !== "super") { %>
+  <div class="panel-card">
+    <h2 class="section-title">분반 설정</h2>
+
+    <div class="class-toolbar">
+      <form method="GET" action="/admin" class="inline-form compact">
+        <select name="manageClass">
+
+
+<% if (professorFilter) { %>
+  <input type="hidden" name="prof" value="<%= professorFilter %>">
+<% } %>
+          <% if (classList.length === 0) { %>
+            <option value="">분반 없음</option>
+          <% } else { %>
+            <% classList.forEach(function(cls){ %>
+              <option value="<%= cls %>" <%= manageClass === cls ? "selected" : "" %>><%= cls %></option>
+            <% }) %>
+          <% } %>
+        </select>
+
+        <% if (search) { %><input type="hidden" name="search" value="<%= search %>"><% } %>
+        <% if (classFilter) { %><input type="hidden" name="class" value="<%= classFilter %>"><% } %>
+        <% if (approvalOnly) { %><input type="hidden" name="approvalOnly" value="<%= approvalOnly %>"><% } %>
+        <% if (submissionFilter) { %><input type="hidden" name="submissionFilter" value="<%= submissionFilter %>"><% } %>
+
+        <button type="submit" class="btn-outline">불러오기</button>
+      </form>
+    </div>
+
+
+
+    <form method="POST" action="/setClassConfig" class="class-row">
+      <div>
+        <label>분반</label>
+        <input name="className" value="<%= manageClass || '' %>" placeholder="새 분반도 입력 가능" required>
+      </div>
+
+      <div>
+        <label>주제</label>
+        <input name="topic" value="<%= selectedClassConfig ? (selectedClassConfig.topic || '') : '' %>" required>
+      </div>
+
+      <div>
+        <label>최소 글자수</label>
+        <input type="number" name="minChars" value="<%= selectedClassConfig ? (selectedClassConfig.minChars || 500) : 500 %>" required>
+      </div>
+
+      <div>
+        <label>진행 시간</label>
+        <input type="number" name="durationMinutes" value="<%= selectedClassConfig ? (selectedClassConfig.durationMinutes || 50) : 50 %>" required>
+      </div>
+
+      <% if (adminRole === "super") { %>
+        <div>
+          <label>담당 교수자</label>
+          <select name="ownerId">
+            <option value="">미지정</option>
+            <% professorOptions.forEach(function(prof){ %>
+              <option value="<%= prof.id %>" <%= selectedClassConfig && selectedClassConfig.ownerId === prof.id ? "selected" : "" %>>
+                <%= prof.name %> (<%= prof.id %>)
+              </option>
+            <% }) %>
+          </select>
+        </div>
+      <% } %>
+
+      <button type="submit" class="btn-main">저장</button>
+    </form>
+
+    <div class="class-actions separated">
+<form method="POST" action="/download-class">
+  <input type="hidden" name="className" value="<%= manageClass || '' %>">
+  <button type="submit" class="btn-outline">현재 선택 분반 전체 다운로드</button>
+</form>
+<span class="action-divider">|</span>
+      <form method="POST" action="/startClass">
+        <input type="hidden" name="className" value="<%= manageClass || '' %>">
+        <button type="submit" class="badge badge-green action-btn">글쓰기 시작</button>
+      </form>
+
+      <form method="POST" action="/stopClass">
+        <input type="hidden" name="className" value="<%= manageClass || '' %>">
+        <button type="submit" class="badge badge-red action-btn">글쓰기 멈춤 / 종료</button>
+      </form>
+
+      <div class="class-state-inline">
+        <span>현재 상태:</span>
+  <span class="state-badge <%= selectedClassConfig && selectedClassConfig.started ? 'state-running' : 'state-waiting' %>">
+    <%= selectedClassConfig && selectedClassConfig.started ? "진행 중" : "대기" %>
+  </span>
+</div>
+
+
+    </div>
+  </div>
+<% } %>
+  <div class="panel-card">
+    <div class="list-header stacked">
+      <h2 class="section-title single-line">학생 목록</h2>
+<% if (adminRole !== "super") { %>
+  <div class="class-stats">
+    <% Object.keys(classStats || {}).forEach(function(cls){ 
+       const stat = classStats[cls]
+       const percent = stat.total ? Math.round((stat.submitted / stat.total) * 100) : 0
+    %>
+      <div class="class-stat-item">
+        <strong><%= cls %></strong>
+        제출 <%= stat.submitted %> / <%= stat.total %> (<%= percent %>%)
+      </div>
+    <% }) %>
+  </div>
 <% } %>
 
-</td>
+      <div class="list-tools">
+        <form method="GET" action="/admin" class="student-search-row">
+          <input type="text" name="search" value="<%= search || '' %>" placeholder="이름 또는 학번 검색">
 
+<% if (adminRole === "super") { %>
+  <select name="prof">
+    <option value="">전체 교수자</option>
+    <% professorOptions.forEach(function(prof){ %>
+      <option value="<%= prof.id %>" <%= professorFilter === prof.id ? "selected" : "" %>>
+        <%= prof.name %> (<%= prof.id %>)
+      </option>
+    <% }) %>
+  </select>
+<% } %>
+
+          <select name="class">
+            <option value="">전체 분반</option>
+            <% classList.forEach(function(cls){ %>
+              <option value="<%= cls %>" <%= classFilter === cls ? "selected" : "" %>><%= cls %></option>
+            <% }) %>
+          </select>
+
+          <select name="submissionFilter">
+            <option value="">제출 상태</option>
+            <option value="submitted" <%= submissionFilter === "submitted" ? "selected" : "" %>>제출 완료</option>
+            <option value="pending" <%= submissionFilter === "pending" ? "selected" : "" %>>미제출</option>
+          </select>
+
+          <select name="approvalOnly">
+            <option value="">화면 상태</option>
+<option value="normal" <%= approvalOnly === "normal" ? "selected" : "" %>>정상</option>
+            <option value="yes" <%= approvalOnly === "yes" ? "selected" : "" %>>입력 제한</option>
+          </select>
+
+<% if (professorFilter) { %>
+  <input type="hidden" name="prof" value="<%= professorFilter %>">
+<% } %>
+          <% if (manageClass) { %>
+            <input type="hidden" name="manageClass" value="<%= manageClass %>">
+          <% } %>
+
+          <button type="submit" class="btn-main search-btn">검색</button>
+        </form>
+
+        <form id="bulkDownloadForm" method="POST" action="/bulk-download">
+          <input type="hidden" name="ids" id="bulkIds">
+          <button type="button" class="btn-outline" onclick="submitBulkDownload()">선택 학생 일괄 다운로드</button>
+        </form>
+
+
+      </div>
+    </div>
+
+    <% if (students && students.length > 0) { %>
+      <div class="table-wrap">
+        <table class="student-table">
+          <thead>
+            <tr>
+              <th><input type="checkbox" id="checkAll" onclick="toggleAll()"></th>
+              <th>이름</th>
+              <th>학번</th>
+              <th>분반</th>
+<th>담당 교수자</th>
+              <th>제출 상태</th>
+              <th>화면 상태</th>
+              <th>작업</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% students.forEach(function(student){ 
+                 const sub = submissions[student.studentId] || {}
+            %>
+              <tr>
+                <td><input type="checkbox" class="student-check" value="<%= student.studentId %>"></td>
+                <td class="student-name"><%= student.name %></td>
+                <td><%= student.studentId %></td>
+                <td><%= student.class || "-" %></td>
 <td>
-
-<a href="/admin/student/<%= student.studentId %>">열기</a>
-
+  <% if (adminRole === "super") { %>
+    <% const prof = professorOptions.find(p => p.id === student.ownerId) %>
+    <%= prof ? prof.name + " (" + prof.id + ")" : (student.ownerId || "-") %>
+  <% } else { %>
+    -
+  <% } %>
 </td>
+                <td>
 
-</tr>
 
-<% }) %>
+                  <div class="status-wrap">
+                    <% if (sub.submitted) { %>
+                      <span class="badge badge-green">제출 완료</span>
+                    <% } else { %>
+                      <span class="badge badge-gray">미제출</span>
+                    <% } %>
+                  </div>
+                </td>
 
-</table>
+                <td>
+                  <% if (sub.approvalRequested) { %>
+                    <form method="POST" action="/approve-request" class="inline-mini-form">
+                      <input type="hidden" name="studentId" value="<%= student.studentId %>">
+                      <button type="submit" class="status-action action-approve">입력 제한</button>
+                    </form>
+                  <% } else if (sub.locked) { %>
+                    <form method="POST" action="/unlock-student" class="inline-mini-form">
+                      <input type="hidden" name="studentId" value="<%= student.studentId %>">
+                      <button type="submit" class="status-action action-lock">입력 제한</button>
+                    </form>
+                  <% } else { %>
+                    <span class="badge badge-gray">정상</span>
+                  <% } %>
+                </td>
 
-<br>
+                <td>
+                  <div class="row-actions">
+                    <a href="/admin/student/<%= student.studentId %>" class="btn-outline btn-sm">열기</a>
+                    <a href="/download/student/<%= student.studentId %>" class="btn-outline btn-sm">다운로드</a>
+                  </div>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    <% } else { %>
+      <p class="empty-text">등록된 학생이 없습니다.</p>
+    <% } %>
+  </div>
 
-<a href="/logout">로그아웃</a>
+</div>
+
+<script>
+window.addEventListener("beforeunload", function () {
+  sessionStorage.setItem("adminScrollY", String(window.scrollY))
+})
+
+window.addEventListener("load", function () {
+  const y = sessionStorage.getItem("adminScrollY")
+  if (y) window.scrollTo(0, Number(y))
+
+  const toast = document.getElementById("flashToast")
+  if (toast) {
+    setTimeout(function(){
+      toast.style.opacity = "0"
+      setTimeout(function(){
+        if (toast.parentNode) toast.parentNode.removeChild(toast)
+      }, 300)
+    }, 2200)
+  }
+})
+
+function toggleAll() {
+  const checked = document.getElementById("checkAll").checked
+  document.querySelectorAll(".student-check").forEach(function(el){
+    el.checked = checked
+  })
+}
+
+function submitBulkDownload() {
+  const ids = []
+  document.querySelectorAll(".student-check:checked").forEach(function(el){
+    ids.push(el.value)
+  })
+
+  if (ids.length === 0) {
+    alert("학생을 선택하세요.")
+    return
+  }
+
+  document.getElementById("bulkIds").value = ids.join(",")
+  document.getElementById("bulkDownloadForm").submit()
+}
+</script>
 
 </body>
 </html>
