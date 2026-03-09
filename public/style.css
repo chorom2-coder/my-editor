@@ -532,22 +532,25 @@ textarea:focus{
   width:100%;
 }
 
+
+
 .writer-notice{
-  border:1px solid #e6eefb;
-  background:#f8fbff;
+  border:1px solid #f3c7c3;
+  background:#fce8e6;
   border-radius:18px;
   padding:16px;
 }
 
+
 .writer-notice h3{
   margin:0 0 10px 0;
   font-size:16px;
-  color:#1f1f1f;
+  color:#b42318;
 }
 
 .writer-notice p{
   margin:0;
-  color:#5f6368;
+  color:#b42318;
   line-height:1.8;
   font-size:14px;
 }
@@ -566,9 +569,10 @@ textarea:focus{
 .timer-box{
   padding:12px 16px;
   border-radius:14px;
-  background:#eef5ff;
-  color:#1a73e8;
+  background:#f3e8ff;
+  color:#7c3aed;
   font-size:16px;
+  font-weight:700;
 }
 
 .lock-banner{
