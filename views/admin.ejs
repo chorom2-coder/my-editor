@@ -81,7 +81,7 @@
   </div>
 <% } %>
 
-  <div class="panel-card">
+  <div class="panel-card" id="studentListPanel">
     <div class="list-header stacked">
       <h2 class="section-title single-line">교수자 관리</h2>
 
@@ -127,9 +127,25 @@
               <td><%= prof.studentCount %></td>
 <td><%= prof.submittedCount %></td>
 <td><%= prof.submitRate %>%</td>
+
 <td>
   <div class="row-actions">
-    <a href="/admin?prof=<%= prof.id %>" class="btn-outline btn-sm">학생 보기</a>
+
+    <a href="/admin?prof=<%= prof.id %>" class="btn-outline btn-sm">
+      학생 보기
+    </a>
+
+    <form method="POST" action="/delete-professor"
+      onsubmit="return confirm('정말 이 교수자를 삭제하시겠습니까? 학생과 분반 데이터는 유지됩니다.');">
+
+      <input type="hidden" name="id" value="<%= prof.id %>">
+
+      <button type="submit" class="btn-danger btn-sm">
+        삭제
+      </button>
+
+    </form>
+
   </div>
 </td>
 
@@ -153,7 +169,8 @@
     </form>
   </div>
 <% } %>
-<% if (adminRole !== "super") { %>
+
+
   <div class="panel-card">
     <h2 class="section-title">분반 설정</h2>
 
@@ -249,7 +266,9 @@
 
     </div>
   </div>
-<% } %>
+
+
+
   <div class="panel-card">
     <div class="list-header stacked">
       <h2 class="section-title single-line">학생 목록</h2>
@@ -345,12 +364,17 @@
                 <td><%= student.studentId %></td>
                 <td><%= student.class || "-" %></td>
 <td>
+
+
+
+  <% const prof = professorOptions.find(p => p.id === student.ownerId) %>
+
   <% if (adminRole === "super") { %>
-    <% const prof = professorOptions.find(p => p.id === student.ownerId) %>
     <%= prof ? prof.name + " (" + prof.id + ")" : (student.ownerId || "-") %>
   <% } else { %>
-    -
+    <%= prof ? prof.name : (student.ownerId || "-") %>
   <% } %>
+
 </td>
                 <td>
 
@@ -379,11 +403,17 @@
                     <span class="badge badge-gray">정상</span>
                   <% } %>
                 </td>
-
                 <td>
                   <div class="row-actions">
                     <a href="/admin/student/<%= student.studentId %>" class="btn-outline btn-sm">열기</a>
                     <a href="/download/student/<%= student.studentId %>" class="btn-outline btn-sm">다운로드</a>
+<a href="/admin/student-edit/<%= student.studentId %>" class="btn-outline btn-sm">수정</a>
+
+    <form method="POST" action="/delete-student"
+      onsubmit="return confirm('이 학생을 삭제하시겠습니까? 제출 데이터도 함께 삭제됩니다.');">
+      <input type="hidden" name="studentId" value="<%= student.studentId %>">
+      <button type="submit" class="btn-danger btn-sm">삭제</button>
+    </form>
                   </div>
                 </td>
               </tr>
@@ -417,7 +447,75 @@ window.addEventListener("load", function () {
     }, 2200)
   }
 })
+<script>
+window.addEventListener("beforeunload", function () {
+  sessionStorage.setItem("adminScrollY", String(window.scrollY))
+})
 
+window.addEventListener("load", function () {
+  const y = sessionStorage.getItem("adminScrollY")
+  if (y) window.scrollTo(0, Number(y))
+
+  const toast = document.getElementById("flashToast")
+  if (toast) {
+    setTimeout(function(){
+      toast.style.opacity = "0"
+      setTimeout(function(){
+        if (toast.parentNode) toast.parentNode.removeChild(toast)
+      }, 300)
+    }, 2200)
+  }
+})
+
+async function refreshStudentListPanel() {
+  try {
+    const currentY = window.scrollY
+
+    const url = new URL(window.location.href)
+    url.searchParams.set("_ts", Date.now())
+
+    const res = await fetch(url.toString(), { cache: "no-store" })
+    const html = await res.text()
+
+    const doc = new DOMParser().parseFromString(html, "text/html")
+    const nextPanel = doc.getElementById("studentListPanel")
+    const currentPanel = document.getElementById("studentListPanel")
+
+    if (nextPanel && currentPanel) {
+      currentPanel.innerHTML = nextPanel.innerHTML
+      window.scrollTo(0, currentY)
+    }
+  } catch (e) {
+    console.log("student list refresh skipped")
+  }
+}
+
+setInterval(refreshStudentListPanel, 5000)
+
+function toggleAll() {
+  const checked = document.getElementById("checkAll").checked
+  document.querySelectorAll(".student-check").forEach(function(el){
+    el.checked = checked
+  })
+}
+
+function submitBulkDownload() {
+  const ids = []
+  document.querySelectorAll(".student-check:checked").forEach(function(el){
+    ids.push(el.value)
+  })
+
+  if (ids.length === 0) {
+    alert("학생을 선택하세요.")
+    return
+  }
+
+  document.getElementById("bulkIds").value = ids.join(",")
+  document.getElementById("bulkDownloadForm").submit()
+}
+</script>
+</script>
+<script>
 function toggleAll() {
   const checked = document.getElementById("checkAll").checked
   document.querySelectorAll(".student-check").forEach(function(el){

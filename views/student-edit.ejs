@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>학생 정보 수정</title>
+<link rel="stylesheet" href="/style.css">
+<style>
+.edit-card{
+  max-width:520px;
+  margin:40px auto;
+  padding:24px;
+  border:1px solid #e6eefb;
+  border-radius:16px;
+  background:#ffffff;
+}
+
+.edit-card h2{
+  margin-bottom:20px;
+}
+
+.edit-row{
+  margin-bottom:14px;
+}
+
+.edit-row label{
+  display:block;
+  font-weight:600;
+  margin-bottom:6px;
+}
+
+.edit-row input,
+.edit-row select{
+  width:100%;
+  padding:8px 10px;
+  border:1px solid #d6e0f5;
+  border-radius:8px;
+}
+
+.edit-actions{
+  margin-top:20px;
+  display:flex;
+  gap:10px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="edit-card">
+
+<h2>학생 정보 수정</h2>
+
+<form method="POST" action="/update-student">
+
+<input type="hidden" name="studentId" value="<%= student.studentId %>">
+
+<div class="edit-row">
+<label>이름</label>
+<input name="name" value="<%= student.name %>" required>
+</div>
+
+<div class="edit-row">
+<label>학번</label>
+<input value="<%= student.studentId %>" disabled>
+</div>
+
+<div class="edit-row">
+<label>분반</label>
+<input name="className" value="<%= student.class %>" required>
+</div>
+
+<% if (adminRole === "super") { %>
+<div class="edit-row">
+<label>담당 교수자</label>
+<select name="ownerId">
+
+<option value="">미지정</option>
+
+<% professorOptions.forEach(function(p){ %>
+
+<option value="<%= p.id %>"
+<%= student.ownerId === p.id ? "selected" : "" %>>
+
+<%= p.name %> (<%= p.id %>)
+
+</option>
+
+<% }) %>
+
+</select>
+</div>
+<% } %>
+
+<div class="edit-actions">
+
+<button type="submit" class="btn-main">
+저장
+</button>
+
+<a href="/admin" class="btn-outline">
+취소
+</a>
+
+</div>
+
+</form>
+
+</div>
+
+</body>
+</html>

@@ -1,38 +1,33 @@
 [
   {
-    "name": "김영희",
-    "studentId": "2026001",
-    "class": "화123"
-  },
-  {
-    "name": "김철수",
-    "studentId": "2026002",
-    "class": "화123"
-  },
-  {
-    "name": "박영희",
+    "name": "박영",
     "studentId": "2026003",
-    "class": "화789"
+    "class": "화789",
+    "ownerId": "prof1"
   },
   {
     "name": "박철수",
     "studentId": "2026004",
-    "class": "화789"
+    "class": "화789",
+    "ownerId": "prof1"
   },
   {
     "name": "이영희",
     "studentId": "2025001",
-    "class": "화123"
+    "class": "화123",
+    "ownerId": "prof1"
   },
   {
     "name": "이철수",
     "studentId": "2025002",
-    "class": "화123"
+    "class": "화123",
+    "ownerId": "prof1"
   },
   {
     "name": "아영희",
     "studentId": "222",
-    "class": "목123"
+    "class": "목123",
+    "ownerId": "prof1"
   },
   {
     "name": "prof1김영희",
@@ -44,6 +39,18 @@
     "name": "prof1김철수",
     "studentId": "prof12",
     "class": "화",
+    "ownerId": "prof1"
+  },
+  {
+    "name": "박영",
+    "studentId": "202601",
+    "class": "화789",
+    "ownerId": "prof1"
+  },
+  {
+    "name": "박철수",
+    "studentId": "123",
+    "class": "화789",
     "ownerId": "prof1"
   }
 ]

@@ -12,9 +12,9 @@
     "name": "교수자"
   },
   {
-    "id": "prof3",
+    "id": "prof2",
     "password": "1234",
     "role": "prof",
-    "name": "교수자3"
+    "name": "교수자2"
   }
 ]

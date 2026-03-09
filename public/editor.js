@@ -203,8 +203,13 @@ async function pollStatus() {
 }
 
 function tryFullscreen() {
+
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+  if (isMobile) return
+
   const elem = document.documentElement
   if (document.fullscreenElement) return
+
   if (elem.requestFullscreen) {
     elem.requestFullscreen().catch(() => {})
   }
@@ -264,8 +269,8 @@ document.addEventListener("DOMContentLoaded", () => {
   updateCount()
   updateLockUI()
   updateTimer()
-  tryFullscreen()
-  document.addEventListener("click", tryFullscreen, { once: true })
+  //tryFullscreen()
+ document.addEventListener("click", tryFullscreen, { once: true })
 })
 
 setInterval(autoSave, 60000)

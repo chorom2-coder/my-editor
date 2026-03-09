@@ -7,7 +7,8 @@
       "durationMinutes": 50,
       "started": true,
       "startTime": 1772984418880,
-      "endTime": 1772987418880
+      "endTime": 1772987418880,
+      "ownerId": "prof1"
     },
     "화789": {
       "topic": "화789 글쓰기 논증문",
@@ -15,15 +16,17 @@
       "durationMinutes": 50,
       "started": true,
       "startTime": 1772891174533,
-      "endTime": 1772894174533
+      "endTime": 1772894174533,
+      "ownerId": "prof1"
     },
     "목123": {
       "topic": "주제를 입력하세요",
       "minChars": 500,
       "durationMinutes": 50,
-      "started": false,
-      "startTime": null,
-      "endTime": null
+      "started": true,
+      "startTime": 1773070294353,
+      "endTime": 1773073294353,
+      "ownerId": "prof1"
     },
     "월": {
       "ownerId": "prof1",

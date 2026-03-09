@@ -530,8 +530,8 @@ const totalSubmittedCount = allStudents.filter(s => {
   const approvalOnly = (req.query.approvalOnly || "").trim()
   const manageClass = (req.query.manageClass || "").trim()
   const submissionFilter = (req.query.submissionFilter || "").trim()
-  const professorFilter = (req.query.prof || "").trim()
-
+ const profQuery = Array.isArray(req.query.prof) ? req.query.prof[0] : req.query.prof
+const professorFilter = String(profQuery || "").trim()
 
 const visibleStudentsBase = visibleStudentsForAdmin(req, allStudents, config)
 
@@ -681,7 +681,6 @@ professorFilter,
   })
 })
 
-
 app.post("/add-professor", requireAdmin, (req, res) => {
   if (req.session.adminRole !== "super") {
     return res.send("초관리자만 교수자를 추가할 수 있습니다.")
@@ -690,13 +689,6 @@ app.post("/add-professor", requireAdmin, (req, res) => {
   const { name, id, password } = req.body
   const admins = readJSON("admins.json")
 
-const professorCount = admins.filter(a => (a.role || "prof") !== "super").length
-const totalClassCount = Object.keys(config.classes || {}).length
-const totalStudentCount = allStudents.length
-const totalSubmittedCount = allStudents.filter(s => {
-  const sub = submissions[s.studentId] || {}
-  return sub.submitted === true
-}).length
 
   if (admins.find(a => a.id === id)) {
     return res.send("이미 존재하는 교수자 ID입니다.")
@@ -806,6 +798,9 @@ app.post("/setClassConfig", requireAdmin, (req, res) => {
   const { className, topic, minChars, durationMinutes, ownerId } = req.body
   const config = readJSON("config.json")
 
+const students = readJSON("students.json")
+
+
   if (!config.classes) config.classes = {}
 
   if (!config.classes[className]) {
@@ -828,7 +823,18 @@ app.post("/setClassConfig", requireAdmin, (req, res) => {
   config.classes[className].minChars = Number(minChars || 500)
   config.classes[className].durationMinutes = Number(durationMinutes || 50)
 
+if (ownerId !== undefined) {
+  students.forEach(s => {
+    if (String(s.class || "") === String(className)) {
+      s.ownerId = ownerId
+    }
+  })
+}
+
+
+
   writeJSON("config.json", config)
+writeJSON("students.json", students)
   res.redirect("/admin?manageClass=" + encodeURIComponent(className) + "&msg=" + encodeURIComponent("분반 설정을 저장했습니다."))
 })
 
@@ -1146,6 +1152,139 @@ app.post("/download-class", requireAdmin, (req, res) => {
   archive.finalize()
 
 })
+
+app.post("/delete-professor", requireAdmin, (req, res) => {
+  if (req.session.adminRole !== "super") {
+    return res.redirect("/admin?msg=" + encodeURIComponent("권한이 없습니다."))
+  }
+
+  const id = String(req.body.id || "").trim()
+  if (!id) {
+    return res.redirect("/admin?msg=" + encodeURIComponent("교수자 ID가 없습니다."))
+  }
+
+  const admins = readJSON("admins.json")
+  const students = readJSON("students.json")
+  const config = readJSON("config.json")
+
+  const target = admins.find(a => a.id === id)
+  if (!target) {
+    return res.redirect("/admin?msg=" + encodeURIComponent("교수자를 찾을 수 없습니다."))
+  }
+
+  if ((target.role || "prof") === "super") {
+    return res.redirect("/admin?msg=" + encodeURIComponent("초관리자 계정은 삭제할 수 없습니다."))
+  }
+
+  const nextAdmins = admins.filter(a => a.id !== id)
+
+  students.forEach(s => {
+    if (String(s.ownerId || "") === id) {
+      s.ownerId = ""
+    }
+  })
+
+  if (config.classes) {
+    Object.keys(config.classes).forEach(cls => {
+      if (String(config.classes[cls].ownerId || "") === id) {
+        config.classes[cls].ownerId = ""
+      }
+    })
+  }
+
+  writeJSON("admins.json", nextAdmins)
+  writeJSON("students.json", students)
+  writeJSON("config.json", config)
+
+  res.redirect("/admin?msg=" + encodeURIComponent("교수자를 삭제했습니다."))
+})
+
+
+app.post("/delete-student", requireAdmin, (req, res) => {
+  const studentId = String(req.body.studentId || "").trim()
+
+  const students = readJSON("students.json")
+  const submissions = readJSON("submissions.json")
+
+  const student = students.find(s => s.studentId === studentId)
+  if (!student) {
+    return res.redirect("/admin?msg=" + encodeURIComponent("학생을 찾을 수 없습니다."))
+  }
+
+  if (req.session.adminRole !== "super") {
+    if (String(student.ownerId || "") !== req.session.adminId) {
+      return res.redirect("/admin?msg=" + encodeURIComponent("삭제 권한이 없습니다."))
+    }
+  }
+
+  const nextStudents = students.filter(s => s.studentId !== studentId)
+
+  delete submissions[studentId]
+
+  writeJSON("students.json", nextStudents)
+  writeJSON("submissions.json", submissions)
+
+  res.redirect("/admin?msg=" + encodeURIComponent("학생을 삭제했습니다."))
+})
+
+app.get("/admin/student-edit/:id", requireAdmin, (req, res) => {
+  const studentId = req.params.id
+
+  const students = readJSON("students.json")
+  const admins = readJSON("admins.json")
+
+  const student = students.find(s => s.studentId === studentId)
+  if (!student) {
+    return res.redirect("/admin?msg=" + encodeURIComponent("학생을 찾을 수 없습니다."))
+  }
+
+  if (req.session.adminRole !== "super") {
+    if (String(student.ownerId || "") !== req.session.adminId) {
+      return res.redirect("/admin")
+    }
+  }
+
+  const professorOptions = admins
+    .filter(a => (a.role || "prof") !== "super")
+    .map(a => ({ id: a.id, name: a.name || a.id }))
+
+  res.render("student-edit", {
+    student,
+    professorOptions,
+    adminRole: req.session.adminRole
+  })
+})
+
+app.post("/update-student", requireAdmin, (req, res) => {
+  const { name, studentId, className, ownerId } = req.body
+
+  const students = readJSON("students.json")
+
+  const student = students.find(s => s.studentId === studentId)
+  if (!student) {
+    return res.redirect("/admin")
+  }
+
+  if (req.session.adminRole !== "super") {
+    if (String(student.ownerId || "") !== req.session.adminId) {
+      return res.redirect("/admin")
+    }
+  }
+
+  student.name = name
+  student.class = className
+
+  if (req.session.adminRole === "super") {
+    student.ownerId = ownerId || ""
+  }
+
+  writeJSON("students.json", students)
+
+  res.redirect("/admin?msg=" + encodeURIComponent("학생 정보를 수정했습니다."))
+})
+
+
+
 
 app.listen(PORT, () => {
   console.log("server running on port " + PORT)

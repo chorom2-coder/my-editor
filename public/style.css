@@ -1033,3 +1033,17 @@ display:flex;
   flex-wrap:wrap;
   margin-bottom:12px;
 }
+.btn-danger{
+  border:none;
+  background:#fce8e6;
+  color:#d93025;
+  padding:8px 12px;
+  border-radius:12px;
+  font-size:13px;
+  font-weight:700;
+  cursor:pointer;
+}
+
+.btn-danger:hover{
+  background:#f9d6d2;
+}
