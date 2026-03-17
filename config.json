@@ -8,7 +8,7 @@
       "started": true,
       "startTime": 1772984418880,
       "endTime": 1772987418880,
-      "ownerId": "prof1"
+      "ownerId": "pf1"
     },
     "화789": {
       "topic": "화789 글쓰기 논증문",
@@ -17,7 +17,7 @@
       "started": true,
       "startTime": 1772891174533,
       "endTime": 1772894174533,
-      "ownerId": "prof1"
+      "ownerId": "pf1"
     },
     "목123": {
       "topic": "주제를 입력하세요",
@@ -26,10 +26,10 @@
       "started": true,
       "startTime": 1773070294353,
       "endTime": 1773073294353,
-      "ownerId": "prof1"
+      "ownerId": ""
     },
     "월": {
-      "ownerId": "prof1",
+      "ownerId": "",
       "topic": "주제를 입력하세요",
       "minChars": 100,
       "durationMinutes": 50,
@@ -38,13 +38,40 @@
       "endTime": 1772980248433
     },
     "화": {
-      "ownerId": "prof1",
+      "ownerId": "",
       "topic": "주제를 입력하세요",
       "minChars": 500,
       "durationMinutes": 50,
       "started": false,
       "startTime": 1772982884882,
       "endTime": 1772989177180
+    },
+    "수456": {
+      "ownerId": "pf1",
+      "topic": "수456 글쓰기",
+      "minChars": 500,
+      "durationMinutes": 50,
+      "started": true,
+      "startTime": 1773741782051,
+      "endTime": 1773744782051
+    },
+    "월789": {
+      "ownerId": "pf1",
+      "topic": "주제를 입력하세요",
+      "minChars": 500,
+      "durationMinutes": 50,
+      "started": false,
+      "startTime": null,
+      "endTime": null
+    },
+    "월123": {
+      "ownerId": "pf2",
+      "topic": "한국어 글쓰기",
+      "minChars": 10,
+      "durationMinutes": 50,
+      "started": false,
+      "startTime": null,
+      "endTime": null
     }
   }
 }

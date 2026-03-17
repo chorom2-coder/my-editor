@@ -1,12 +1,17 @@
+require("dotenv").config()
+
 const express = require("express")
 const fs = require("fs")
 const path = require("path")
 const bodyParser = require("body-parser")
 const session = require("express-session")
-
+const { createClient } = require("@supabase/supabase-js")
 const app = express()
 const PORT = process.env.PORT || 3000
-
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_KEY
+)
 app.set("view engine", "ejs")
 app.set("views", path.join(__dirname, "views"))
 
@@ -66,6 +71,57 @@ function defaultClassConfig() {
     started: false,
     startTime: null,
     endTime: null
+  }
+}
+
+async function getClassConfigFromDb(className) {
+  const { data, error } = await supabase
+    .from("class_configs")
+    .select("*")
+    .eq("class_name", className)
+    .maybeSingle()
+
+  if (error) throw error
+
+  if (!data) {
+    const defaults = defaultClassConfig()
+
+    const { data: inserted, error: insertError } = await supabase
+      .from("class_configs")
+      .insert({
+        class_name: className,
+        owner_id: defaults.ownerId,
+        topic: defaults.topic,
+        min_chars: defaults.minChars,
+        duration_minutes: defaults.durationMinutes,
+        started: defaults.started,
+        start_time: defaults.startTime,
+        end_time: defaults.endTime
+      })
+      .select()
+      .single()
+
+    if (insertError) throw insertError
+
+    return {
+      ownerId: inserted.owner_id || "",
+      topic: inserted.topic || "주제를 입력하세요",
+      minChars: inserted.min_chars ?? 500,
+      durationMinutes: inserted.duration_minutes ?? 50,
+      started: inserted.started === true,
+      startTime: inserted.start_time ?? null,
+      endTime: inserted.end_time ?? null
+    }
+  }
+
+  return {
+    ownerId: data.owner_id || "",
+    topic: data.topic || "주제를 입력하세요",
+    minChars: data.min_chars ?? 500,
+    durationMinutes: data.duration_minutes ?? 50,
+    started: data.started === true,
+    startTime: data.start_time ?? null,
+    endTime: data.end_time ?? null
   }
 }
 
@@ -204,35 +260,33 @@ app.get("/login", (req, res) => {
   res.render("login")
 })
 
-app.post("/login", (req, res) => {
-  const { name, id } = req.body
 
-  const students = readJSON("students.json")
-  const student = students.find(s => s.studentId === id && s.name === name)
+app.post("/login", async (req, res) => {
+  try {
+    const { name, id } = req.body
 
-  if (!student) {
-    return res.send("학생 정보가 없습니다. 이름과 학번을 다시 확인하세요.")
-  }
+    const { data, error } = await supabase
+      .from("students")
+      .select("*")
+      .eq("name", name)
+      .eq("student_id", id)
+      .maybeSingle()
 
-  ensureClassConfig(student.class || "")
-  const submissions = ensureSubmission(student)
-  const sub = submissions[id]
-  const config = readJSON("config.json")
-  const classConfig = config.classes?.[student.class] || {}
-
-  req.session.studentId = student.studentId
-  req.session.studentName = student.name
-  req.session.studentClass = student.class || ""
-
-  if (classConfig.started === true) {
-    if (sub.submitted) {
-      return res.redirect("/result/" + student.studentId)
+    if (error || !data) {
+      return res.send("학생 정보가 없습니다. 이름과 학번을 다시 확인하세요.")
     }
-    return res.redirect("/write/" + student.studentId)
-  }
 
-  return res.redirect("/waiting/" + student.studentId)
+    req.session.studentId = data.student_id
+    req.session.studentName = data.name
+    req.session.studentClass = data.class_name || ""
+
+    return res.redirect("/waiting/" + data.student_id)
+  } catch (err) {
+    console.error(err)
+    res.status(500).send("로그인 중 오류가 발생했습니다.")
+  }
 })
+
 
 app.get("/student-logout", (req, res) => {
   req.session.destroy(() => {
@@ -261,218 +315,356 @@ app.get("/student-logout", (req, res) => {
    대기화면
 ------------------------- */
 
-app.get("/waiting/:id", (req, res) => {
-  const students = readJSON("students.json")
-  const student = students.find(s => s.studentId === req.params.id)
+app.get("/waiting/:id", async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from("students")
+      .select("*")
+      .eq("student_id", req.params.id)
+      .maybeSingle()
 
-  if (!student) return res.send("학생 정보를 찾을 수 없습니다.")
+    if (error || !data) {
+      return res.send("학생 정보를 찾을 수 없습니다.")
+    }
 
-  res.render("waiting", {
-    studentName: student.name,
-    studentClass: student.class || "",
-    studentId: student.studentId
-  })
+    res.render("waiting", {
+      studentName: data.name,
+      studentClass: data.class_name || "",
+      studentId: data.student_id
+    })
+  } catch (err) {
+    console.error(err)
+    res.status(500).send("오류가 발생했습니다.")
+  }
 })
 
-app.get("/status/:id", (req, res) => {
-  const students = readJSON("students.json")
-  const submissions = readJSON("submissions.json")
-  const config = readJSON("config.json")
+app.get("/status/:id", async (req, res) => {
+  try {
+    const studentId = req.params.id
 
-  const student = students.find(s => s.studentId === req.params.id)
-  if (!student) return res.json({ ok: false })
+    const { data: student, error: studentError } = await supabase
+      .from("students")
+      .select("*")
+      .eq("student_id", studentId)
+      .maybeSingle()
 
-  const sub = submissions[student.studentId] || {}
-  const classConfig = config.classes?.[student.class] || {}
+    if (studentError || !student) {
+      return res.json({ ok: false })
+    }
 
-  res.json({
-    ok: true,
-    started: classConfig.started === true,
-    submitted: sub.submitted === true,
-    locked: sub.locked === true,
-    approvalRequested: sub.approvalRequested === true,
-    endTime: classConfig.endTime || null
-  })
+    const { data: sub } = await supabase
+      .from("submissions")
+      .select("*")
+      .eq("student_id", studentId)
+      .maybeSingle()
+
+    const classConfig = await getClassConfigFromDb(student.class_name || "")
+
+    res.json({
+      ok: true,
+      started: classConfig.started === true,
+      submitted: sub?.submitted === true,
+      locked: sub?.locked === true,
+      approvalRequested: sub?.approval_requested === true,
+      endTime: classConfig.endTime || null
+    })
+  } catch (err) {
+    console.error(err)
+    res.json({ ok: false })
+  }
 })
-
 /* -------------------------
    글쓰기 화면
 ------------------------- */
 
-app.get("/write/:id", (req, res) => {
-  const students = readJSON("students.json")
-  const submissions = readJSON("submissions.json")
-  const config = readJSON("config.json")
+app.get("/write/:id", async (req, res) => {
+  try {
+    const studentId = req.params.id
 
-  const student = students.find(s => s.studentId === req.params.id)
-  if (!student) return res.send("학생 정보를 찾을 수 없습니다.")
+    const { data: student, error: studentError } = await supabase
+      .from("students")
+      .select("*")
+      .eq("student_id", studentId)
+      .maybeSingle()
 
-  const classConfig = config.classes?.[student.class]
-  if (!classConfig || classConfig.started !== true) {
-    return res.redirect("/waiting/" + student.studentId)
-  }
+    if (studentError || !student) {
+      return res.send("학생 정보를 찾을 수 없습니다.")
+    }
 
-  const sub = submissions[student.studentId] || {}
-  if (sub.submitted) {
-    return res.redirect("/result/" + student.studentId)
-  }
+    const { data: sub } = await supabase
+      .from("submissions")
+      .select("*")
+      .eq("student_id", studentId)
+      .maybeSingle()
 
-  res.render("write", {
-    id: student.studentId,
-    studentName: student.name,
-    studentClass: student.class || "",
-    topic: classConfig.topic || "주제를 입력하세요",
-    minChars: classConfig.minChars || 500,
-    text: sub.text || "",
-    locked: sub.locked === true,
-    endTime: classConfig.endTime || null
-  })
-})
+const classConfig = await getClassConfigFromDb(student.class_name)
 
-app.post("/save", (req, res) => {
-  const { studentId, text } = req.body
+    if (!classConfig || classConfig.started !== true) {
+      return res.redirect("/waiting/" + student.student_id)
+    }
 
-  const students = readJSON("students.json")
-  const submissions = readJSON("submissions.json")
-  const config = readJSON("config.json")
+    if (sub?.submitted) {
+      return res.redirect("/result/" + student.student_id)
+    }
 
-  const student = students.find(s => s.studentId === studentId)
-  if (!student) return res.json({ ok: false, msg: "학생 정보 없음" })
-
-  const classConfig = config.classes?.[student.class]
-  if (!classConfig || classConfig.started !== true) {
-    return res.json({ ok: false, msg: "현재 진행 중이 아닙니다." })
-  }
-
-  const sub = submissions[studentId]
-  if (!sub) return res.json({ ok: false, msg: "작성 정보 없음" })
-
-  if (sub.locked) {
-    return res.json({ ok: false, msg: "입력창이 차단되었습니다." })
-  }
-
-  if (sub.submitted) {
-    return res.json({ ok: false, msg: "이미 제출되었습니다." })
-  }
-
-  submissions[studentId].text = text
-  writeJSON("submissions.json", submissions)
-
-  return res.json({ ok: true })
-})
-
-app.post("/submit", (req, res) => {
-  const { studentId, text } = req.body
-
-  const students = readJSON("students.json")
-  const submissions = readJSON("submissions.json")
-  const config = readJSON("config.json")
-
-  const student = students.find(s => s.studentId === studentId)
-  if (!student) return res.json({ ok: false, msg: "학생 정보 없음" })
-
-  const classConfig = config.classes?.[student.class]
-  if (!classConfig || classConfig.started !== true) {
-    return res.json({ ok: false, msg: "현재 진행 중이 아닙니다." })
-  }
-
-  const sub = submissions[studentId]
-  if (!sub) return res.json({ ok: false, msg: "작성 정보 없음" })
-
-  if (sub.locked) {
-    return res.json({ ok: false, msg: "입력창이 차단되었습니다." })
-  }
-
-  const withoutSpace = String(text || "").replace(/\s/g, "").length
-  const withSpace = String(text || "").length
-
-  if (withoutSpace < Number(classConfig.minChars || 500)) {
-    return res.json({
-      ok: false,
-      msg: `최소 ${Number(classConfig.minChars || 500)}자 이상 작성해야 합니다.`
+    res.render("write", {
+      id: student.student_id,
+      studentName: student.name,
+      studentClass: student.class_name || "",
+      topic: classConfig.topic || "주제를 입력하세요",
+      minChars: classConfig.minChars || 500,
+      text: sub?.text || "",
+      locked: sub?.locked === true,
+      endTime: classConfig.endTime || null
     })
+  } catch (err) {
+    console.error(err)
+    res.status(500).send("오류가 발생했습니다.")
   }
-
-  const submittedAt = Date.now()
-  const startTime = Number(classConfig.startTime || submittedAt)
-  const durationMs = Math.max(0, submittedAt - startTime)
-
-  const totalMinutes = Math.floor(durationMs / 60000)
-  const remainSeconds = Math.floor((durationMs % 60000) / 1000)
-
-  const durationText =
-    totalMinutes > 0
-      ? `${totalMinutes}분 ${remainSeconds}초`
-      : `${remainSeconds}초`
-
-  const submitDate = new Date(submittedAt)
-  const yyyy = submitDate.getFullYear()
-  const mm = String(submitDate.getMonth() + 1).padStart(2, "0")
-  const dd = String(submitDate.getDate()).padStart(2, "0")
-  const hh = String(submitDate.getHours()).padStart(2, "0")
-  const mi = String(submitDate.getMinutes()).padStart(2, "0")
-  const ss = String(submitDate.getSeconds()).padStart(2, "0")
-
-  submissions[studentId].text = text
-  submissions[studentId].submitted = true
-  submissions[studentId].submittedAt = submittedAt
-  submissions[studentId].submitTime = `${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss}`
-  submissions[studentId].duration = durationText
-  submissions[studentId].withSpace = withSpace
-  submissions[studentId].withoutSpace = withoutSpace
-
-  writeJSON("submissions.json", submissions)
-
-  return res.json({ ok: true })
 })
+app.post("/save", async (req, res) => {
+  try {
+    const { studentId, text } = req.body
 
-app.post("/warn", (req, res) => {
-  const { id } = req.body
-  const submissions = readJSON("submissions.json")
-  const sub = submissions[id]
+    const { data: student, error: studentError } = await supabase
+      .from("students")
+      .select("*")
+      .eq("student_id", studentId)
+      .maybeSingle()
 
-  if (!sub) return res.json({ ok: false })
+    if (studentError || !student) {
+      return res.json({ ok: false, msg: "학생 정보 없음" })
+    }
 
-  sub.warningCount = (sub.warningCount || 0) + 1
+  const classConfig = await getClassConfigFromDb(student.class_name)
 
-  if (sub.warningCount >= 2) {
-    sub.locked = true
+    if (!classConfig || classConfig.started !== true) {
+      return res.json({ ok: false, msg: "현재 진행 중이 아닙니다." })
+    }
+
+    const { data: sub } = await supabase
+      .from("submissions")
+      .select("*")
+      .eq("student_id", studentId)
+      .maybeSingle()
+
+    if (sub?.locked) {
+      return res.json({ ok: false, msg: "입력창이 차단되었습니다." })
+    }
+
+    if (sub?.submitted) {
+      return res.json({ ok: false, msg: "이미 제출되었습니다." })
+    }
+
+    // 👉 핵심: insert or update
+    const { error: upsertError } = await supabase
+      .from("submissions")
+      .upsert({
+        student_id: studentId,
+        name: student.name,
+        class_name: student.class_name,
+        text: text
+      })
+
+    if (upsertError) {
+      console.error(upsertError)
+      return res.json({ ok: false, msg: "저장 실패" })
+    }
+
+    return res.json({ ok: true })
+  } catch (err) {
+    console.error(err)
+    res.json({ ok: false })
   }
-
-  writeJSON("submissions.json", submissions)
-
-  res.json({
-    ok: true,
-    warningCount: sub.warningCount,
-    locked: sub.locked === true
-  })
 })
 
-app.post("/request-approval", (req, res) => {
-  const { id } = req.body
-  const submissions = readJSON("submissions.json")
-  const sub = submissions[id]
+app.post("/submit", async (req, res) => {
+  try {
+    const { studentId, text } = req.body
 
-  if (!sub) return res.json({ ok: false })
+    const { data: student, error: studentError } = await supabase
+      .from("students")
+      .select("*")
+      .eq("student_id", studentId)
+      .maybeSingle()
 
-  sub.approvalRequested = true
-  writeJSON("submissions.json", submissions)
+    if (studentError || !student) {
+      return res.json({ ok: false, msg: "학생 정보 없음" })
+    }
 
-  res.json({ ok: true })
+const classConfig = await getClassConfigFromDb(student.class_name)
+
+    if (!classConfig || classConfig.started !== true) {
+      return res.json({ ok: false, msg: "현재 진행 중이 아닙니다." })
+    }
+
+    const { data: sub } = await supabase
+      .from("submissions")
+      .select("*")
+      .eq("student_id", studentId)
+      .maybeSingle()
+
+    if (!sub) {
+      return res.json({ ok: false, msg: "작성 정보 없음" })
+    }
+
+    if (sub.locked) {
+      return res.json({ ok: false, msg: "입력창이 차단되었습니다." })
+    }
+
+    const withoutSpace = String(text || "").replace(/\s/g, "").length
+    const withSpace = String(text || "").length
+
+    if (withoutSpace < Number(classConfig.minChars || 500)) {
+      return res.json({
+        ok: false,
+        msg: `최소 ${Number(classConfig.minChars || 500)}자 이상 작성해야 합니다.`
+      })
+    }
+
+    const submittedAt = Date.now()
+    const startTime = Number(classConfig.startTime || submittedAt)
+    const durationMs = Math.max(0, submittedAt - startTime)
+
+    const totalMinutes = Math.floor(durationMs / 60000)
+    const remainSeconds = Math.floor((durationMs % 60000) / 1000)
+
+    const durationText =
+      totalMinutes > 0
+        ? `${totalMinutes}분 ${remainSeconds}초`
+        : `${remainSeconds}초`
+
+    const submitDate = new Date(submittedAt)
+    const yyyy = submitDate.getFullYear()
+    const mm = String(submitDate.getMonth() + 1).padStart(2, "0")
+    const dd = String(submitDate.getDate()).padStart(2, "0")
+    const hh = String(submitDate.getHours()).padStart(2, "0")
+    const mi = String(submitDate.getMinutes()).padStart(2, "0")
+    const ss = String(submitDate.getSeconds()).padStart(2, "0")
+
+    const { error: updateError } = await supabase
+      .from("submissions")
+      .update({
+        text: text,
+        submitted: true,
+        submitted_at: submittedAt,
+        submit_time: `${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss}`,
+        duration: durationText,
+        with_space: withSpace,
+        without_space: withoutSpace
+      })
+      .eq("student_id", studentId)
+
+    if (updateError) {
+      console.error(updateError)
+      return res.json({ ok: false, msg: "제출 실패" })
+    }
+
+    return res.json({ ok: true })
+  } catch (err) {
+    console.error(err)
+    res.json({ ok: false, msg: "제출 중 오류가 발생했습니다." })
+  }
 })
 
-app.get("/result/:id", (req, res) => {
-  const submissions = readJSON("submissions.json")
-  const sub = submissions[req.params.id] || {}
+app.post("/warn", async (req, res) => {
+  try {
+    const { id } = req.body
 
-  res.render("result", {
-    studentName: sub.name || req.session.studentName || "",
-    studentClass: sub.class || req.session.studentClass || "",
-    text: sub.text || "",
-    comment: sub.comment || ""
-  })
+    const { data: sub, error } = await supabase
+      .from("submissions")
+      .select("*")
+      .eq("student_id", id)
+      .maybeSingle()
+
+    if (error || !sub) {
+      return res.json({ ok: false })
+    }
+
+    const warningCount = (sub.warning_count || 0) + 1
+    const locked = warningCount >= 2
+
+    const { error: updateError } = await supabase
+      .from("submissions")
+      .update({
+        warning_count: warningCount,
+        locked: locked
+      })
+      .eq("student_id", id)
+
+    if (updateError) {
+      console.error(updateError)
+      return res.json({ ok: false })
+    }
+
+    res.json({
+      ok: true,
+      warningCount,
+      locked
+    })
+  } catch (err) {
+    console.error(err)
+    res.json({ ok: false })
+  }
 })
 
+app.post("/request-approval", async (req, res) => {
+  try {
+    const { id } = req.body
+
+    const { data: sub, error } = await supabase
+      .from("submissions")
+      .select("*")
+      .eq("student_id", id)
+      .maybeSingle()
+
+    if (error || !sub) {
+      return res.json({ ok: false })
+    }
+
+    const { error: updateError } = await supabase
+      .from("submissions")
+      .update({
+        approval_requested: true
+      })
+      .eq("student_id", id)
+
+    if (updateError) {
+      console.error(updateError)
+      return res.json({ ok: false })
+    }
+
+    res.json({ ok: true })
+  } catch (err) {
+    console.error(err)
+    res.json({ ok: false })
+  }
+})
+
+app.get("/result/:id", async (req, res) => {
+  try {
+    const { data: sub, error } = await supabase
+      .from("submissions")
+      .select("*")
+      .eq("student_id", req.params.id)
+      .maybeSingle()
+
+    if (error) {
+      console.error(error)
+      return res.status(500).send("오류가 발생했습니다.")
+    }
+
+    res.render("result", {
+      studentName: sub?.name || req.session.studentName || "",
+      studentClass: sub?.class_name || req.session.studentClass || "",
+      text: sub?.text || "",
+      comment: sub?.comment || ""
+    })
+  } catch (err) {
+    console.error(err)
+    res.status(500).send("오류가 발생했습니다.")
+  }
+})
 /* -------------------------
    관리자 로그인
 ------------------------- */
@@ -508,9 +700,54 @@ app.get("/logout", (req, res) => {
    관리자 페이지
 ------------------------- */
 
-app.get("/admin", requireAdmin, (req, res) => {
-  const allStudents = readJSON("students.json")
-  const submissions = readJSON("submissions.json")
+app.get("/admin", requireAdmin, async (req, res) => {
+  const { data: studentRows, error: studentError } = await supabase
+  .from("students")
+  .select("*")
+
+if (studentError) {
+  console.error(studentError)
+  return res.send("학생 목록 오류")
+}
+
+const allStudents = (studentRows || []).map(s => ({
+  name: s.name,
+  studentId: s.student_id,
+  class: s.class_name || "",
+  ownerId: s.owner_id || ""
+}))
+ 
+
+const { data: submissionRows, error: submissionError } = await supabase
+  .from("submissions")
+  .select("*")
+
+if (submissionError) {
+  console.error(submissionError)
+  return res.send("제출 목록을 불러오는 중 오류가 발생했습니다.")
+}
+
+const submissions = {}
+;(submissionRows || []).forEach(row => {
+  submissions[row.student_id] = {
+    name: row.name || "",
+    studentId: row.student_id,
+    class: row.class_name || "",
+    text: row.text || "",
+    submitted: row.submitted === true,
+    comment: row.comment || "",
+    warningCount: row.warning_count || 0,
+    locked: row.locked === true,
+    approvalRequested: row.approval_requested === true,
+    submittedAt: row.submitted_at || null,
+    submitTime: row.submit_time || "",
+    duration: row.duration || "",
+    withSpace: row.with_space || 0,
+    withoutSpace: row.without_space || 0
+  }
+})
+
+
   const config = readJSON("config.json")
   const admins = readJSON("admins.json")
 
@@ -603,10 +840,10 @@ if (approvalOnly === "yes") {
     selectedManageClass = classList[0]
   }
 
-  let selectedClassConfig = null
-  if (selectedManageClass) {
-    selectedClassConfig = config.classes?.[selectedManageClass] || defaultClassConfig()
-  }
+let selectedClassConfig = null
+if (selectedManageClass) {
+  selectedClassConfig = await getClassConfigFromDb(selectedManageClass)
+}
 
   const visibleStudentsForCount = visibleStudentsBase
   const approvalCount = visibleStudentsForCount.filter(s => {
@@ -721,321 +958,637 @@ app.post("/change-password", requireAdmin, (req, res) => {
   res.redirect("/admin?msg=" + encodeURIComponent("비밀번호를 변경했습니다."))
 })
 
-app.post("/addStudents", requireAdmin, (req, res) => {
 
-  const list = req.body.list || ""
-  const students = readJSON("students.json")
-  const config = readJSON("config.json")
+app.post("/addStudents", requireAdmin, async (req, res) => {
+  try {
+    const list = req.body.list || ""
+    const config = readJSON("config.json")
 
-  if (!config.classes) config.classes = {}
+    if (!config.classes) config.classes = {}
 
-  let added = 0
-  let skipped = 0
+    let added = 0
+    let skipped = 0
 
-  const lines = list.split("\n")
+    const lines = list.split("\n")
+    const rowsToInsert = []
 
-  lines.forEach(line => {
+    for (const line of lines) {
+      const parsed = parseStudentLine(line)
+      if (!parsed) continue
 
-    const parsed = parseStudentLine(line)
-    if (!parsed) return
+      const className = parsed.className
 
-    const className = parsed.className
-
-    if (!config.classes[className]) {
-      config.classes[className] = defaultClassConfig()
-    }
-
-    if (req.session.adminRole !== "super") {
-
-      if (!config.classes[className].ownerId) {
-        config.classes[className].ownerId = req.session.adminId
+      if (!config.classes[className]) {
+        config.classes[className] = defaultClassConfig()
       }
 
-      if (config.classes[className].ownerId !== req.session.adminId) {
+      if (req.session.adminRole !== "super") {
+        if (!config.classes[className].ownerId) {
+          config.classes[className].ownerId = req.session.adminId
+        }
+
+        if (config.classes[className].ownerId !== req.session.adminId) {
+          skipped++
+          continue
+        }
+      }
+
+      const ownerId = config.classes[className].ownerId || ""
+
+      const { data: existing } = await supabase
+        .from("students")
+        .select("student_id")
+        .eq("student_id", parsed.studentId)
+        .maybeSingle()
+
+      if (existing) {
         skipped++
-        return
+        continue
       }
-    }
 
-    const existing = students.find(s => s.studentId === parsed.studentId)
-
-
-    if (existing) {
-
-      skipped++
-      return
-
-    } else {
-
-      students.push({
-        name: parsed.name,
-        studentId: parsed.studentId,
-        class: className,
-        ownerId: config.classes[className].ownerId || ""
-      })
-
-    }
-
-    added++
-  })
-
-  writeJSON("students.json", students)
-  writeJSON("config.json", config)
-
-  students.forEach(student => ensureSubmission(student))
-
-  const message = `학생 명단을 저장했습니다 (${added}명)`
-  res.redirect("/admin?msg=" + encodeURIComponent(message))
-
+ rowsToInsert.push({
+  name: parsed.name,
+  student_id: parsed.studentId,
+  password: parsed.studentId,
+  class_name: className,
+  owner_id: ownerId
 })
 
+      added++
+    }
+
+    if (rowsToInsert.length > 0) {
+      const { error } = await supabase
+        .from("students")
+        .insert(rowsToInsert)
+
+      if (error) {
+        console.error(error)
+        return res.redirect("/admin?msg=" + encodeURIComponent("학생 저장 중 오류가 발생했습니다."))
+      }
+
+      const submissionRows = rowsToInsert.map(student => ({
+        student_id: student.student_id,
+        name: student.name,
+        class_name: student.class_name,
+        text: "",
+        submitted: false,
+        comment: "",
+        warning_count: 0,
+        locked: false,
+        approval_requested: false,
+        submitted_at: null,
+        submit_time: "",
+        duration: "",
+        with_space: 0,
+        without_space: 0
+      }))
+
+      const { error: submissionError } = await supabase
+        .from("submissions")
+        .upsert(submissionRows, { onConflict: "student_id" })
+
+      if (submissionError) {
+        console.error(submissionError)
+        return res.redirect("/admin?msg=" + encodeURIComponent("제출 정보 생성 중 오류가 발생했습니다."))
+      }
+    }
+
+    writeJSON("config.json", config)
+
+    const message = `학생 명단을 저장했습니다 (${added}명)`
+    res.redirect("/admin?msg=" + encodeURIComponent(message))
+  } catch (err) {
+    console.error(err)
+    res.redirect("/admin?msg=" + encodeURIComponent("학생 명단 저장 중 오류가 발생했습니다."))
+  }
+})
 
 
    
  
+app.post("/setClassConfig", requireAdmin, async (req, res) => { 
+try { 
 
-app.post("/setClassConfig", requireAdmin, (req, res) => {
-  const { className, topic, minChars, durationMinutes, ownerId } = req.body
-  const config = readJSON("config.json")
+const className = req.body.className
+const topic = req.body.topic
+const minChars = req.body.minChars
+const durationMinutes = req.body.durationMinutes
+const ownerId = req.body.ownerId
 
-const students = readJSON("students.json")
 
+const currentConfig = await getClassConfigFromDb(className)
 
-  if (!config.classes) config.classes = {}
+let finalOwnerId = currentConfig.ownerId || ""
 
-  if (!config.classes[className]) {
-    config.classes[className] = defaultClassConfig()
+if (req.session.adminRole !== "super") {
+  if (finalOwnerId && finalOwnerId !== req.session.adminId) {
+    return res.redirect("/admin?msg=" + encodeURIComponent("해당 분반은 수정할 수 없습니다."))
   }
-
-  if (req.session.adminRole !== "super") {
-    const owner = config.classes[className].ownerId || ""
-    if (owner && owner !== req.session.adminId) {
-      return res.redirect("/admin?msg=" + encodeURIComponent("해당 분반은 수정할 수 없습니다."))
-    }
-    config.classes[className].ownerId = req.session.adminId
-  } else {
-    if (ownerId !== undefined) {
-      config.classes[className].ownerId = ownerId
-    }
+  finalOwnerId = req.session.adminId
+} else {
+  if (ownerId !== undefined) {
+    finalOwnerId = ownerId || ""
   }
-
-  config.classes[className].topic = topic
-  config.classes[className].minChars = Number(minChars || 500)
-  config.classes[className].durationMinutes = Number(durationMinutes || 50)
-
-if (ownerId !== undefined) {
-  students.forEach(s => {
-    if (String(s.class || "") === String(className)) {
-      s.ownerId = ownerId
-    }
-  })
 }
 
-
-
-  writeJSON("config.json", config)
-writeJSON("students.json", students)
-  res.redirect("/admin?manageClass=" + encodeURIComponent(className) + "&msg=" + encodeURIComponent("분반 설정을 저장했습니다."))
-})
-
-app.post("/startClass", requireAdmin, (req, res) => {
-  const { className } = req.body
-  const config = readJSON("config.json")
-
-  if (!config.classes) config.classes = {}
-  if (!config.classes[className]) {
-    config.classes[className] = defaultClassConfig()
-  }
-
-  if (req.session.adminRole !== "super") {
-    const owner = config.classes[className].ownerId || ""
-    if (owner && owner !== req.session.adminId) {
-      return res.redirect("/admin?msg=" + encodeURIComponent("해당 분반은 시작할 수 없습니다."))
-    }
-    config.classes[className].ownerId = req.session.adminId
-  }
-
-  const now = Date.now()
-  const duration = Number(config.classes[className].durationMinutes || 50)
-
-  config.classes[className].started = true
-  config.classes[className].startTime = now
-  config.classes[className].endTime = now + duration * 60 * 1000
-
-  writeJSON("config.json", config)
-
-  res.redirect("/admin?manageClass=" + encodeURIComponent(className) + "&msg=" + encodeURIComponent("시작되었습니다."))
-})
-
-app.post("/stopClass", requireAdmin, (req, res) => {
-  const { className } = req.body
-  const config = readJSON("config.json")
-
-  if (!config.classes?.[className]) {
-    return res.redirect("/admin?msg=" + encodeURIComponent("분반을 찾을 수 없습니다."))
-  }
-
-  if (req.session.adminRole !== "super") {
-    const owner = config.classes[className].ownerId || ""
-    if (owner !== req.session.adminId) {
-      return res.redirect("/admin?msg=" + encodeURIComponent("해당 분반은 종료할 수 없습니다."))
-    }
-  }
-
-  config.classes[className].started = false
-  config.classes[className].endTime = Date.now()
-
-  writeJSON("config.json", config)
-
-  res.redirect("/admin?manageClass=" + encodeURIComponent(className) + "&msg=" + encodeURIComponent("종료되었습니다."))
-})
-
-app.post("/unlock-student", requireAdmin, (req, res) => {
-  const students = readJSON("students.json")
-  students.sort((a,b)=>{
-    if (a.class === b.class) {
-      return a.studentId.localeCompare(b.studentId)
-  }
-    return a.class.localeCompare(b.class)
-})
-
-
-  const submissions = readJSON("submissions.json")
-  const config = readJSON("config.json")
-
-  const student = students.find(s => s.studentId === req.body.studentId)
-  if (!student || !studentVisibleToAdmin(req, student, config)) {
-    return res.redirect("/admin?msg=" + encodeURIComponent("해당 학생을 처리할 수 없습니다."))
-  }
-
-  if (submissions[req.body.studentId]) {
-    submissions[req.body.studentId].locked = false
-    submissions[req.body.studentId].warningCount = 0
-    submissions[req.body.studentId].approvalRequested = false
-    writeJSON("submissions.json", submissions)
-  }
-
-  res.redirect("/admin?msg=" + encodeURIComponent("입력 잠금을 해제했습니다."))
-})
-
-app.post("/approve-request", requireAdmin, (req, res) => {
-  const students = readJSON("students.json")
-  const submissions = readJSON("submissions.json")
-  const config = readJSON("config.json")
-
-  const student = students.find(s => s.studentId === req.body.studentId)
-  if (!student || !studentVisibleToAdmin(req, student, config)) {
-    return res.redirect("/admin?msg=" + encodeURIComponent("해당 학생을 처리할 수 없습니다."))
-  }
-
-  if (submissions[req.body.studentId]) {
-    submissions[req.body.studentId].locked = false
-    submissions[req.body.studentId].warningCount = 0
-    submissions[req.body.studentId].approvalRequested = false
-    writeJSON("submissions.json", submissions)
-  }
-
-  res.redirect("/admin?msg=" + encodeURIComponent("승인 요청을 처리했습니다."))
-})
-
-app.post("/comment", requireAdmin, (req, res) => {
-  const students = readJSON("students.json")
-  const submissions = readJSON("submissions.json")
-  const config = readJSON("config.json")
-
-  const student = students.find(s => s.studentId === req.body.studentId)
-  if (!student || !studentVisibleToAdmin(req, student, config)) {
-    return res.redirect("/admin?msg=" + encodeURIComponent("해당 학생을 처리할 수 없습니다."))
-  }
-
-  if (submissions[req.body.studentId]) {
-    submissions[req.body.studentId].comment = req.body.comment
-    writeJSON("submissions.json", submissions)
-  }
-
-  res.redirect("/admin/student/" + req.body.studentId + "?msg=" + encodeURIComponent("코멘트를 저장했습니다."))
-})
-
-app.get("/admin/student/:studentId", requireAdmin, (req, res) => {
-  const students = readJSON("students.json")
-  const submissions = readJSON("submissions.json")
-  const config = readJSON("config.json")
-
-  const student = students.find(s => s.studentId === req.params.studentId)
-  if (!student || !studentVisibleToAdmin(req, student, config)) {
-    return res.send("학생 정보를 찾을 수 없습니다.")
-  }
-
-  const raw = submissions[req.params.studentId] || {
-    text: "",
-    comment: "",
-    submitted: false,
-    locked: false,
-    approvalRequested: false
-  }
-
-  const text = raw.text || ""
-  const withSpace = raw.withSpace ?? text.length
-  const withoutSpace = raw.withoutSpace ?? text.replace(/\s/g, "").length
-
-  let submitTime = raw.submitTime || "-"
-  if (submitTime === "-" && raw.submittedAt) {
-    const d = new Date(raw.submittedAt)
-    const yyyy = d.getFullYear()
-    const mm = String(d.getMonth() + 1).padStart(2, "0")
-    const dd = String(d.getDate()).padStart(2, "0")
-    const hh = String(d.getHours()).padStart(2, "0")
-    const mi = String(d.getMinutes()).padStart(2, "0")
-    const ss = String(d.getSeconds()).padStart(2, "0")
-    submitTime = `${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss}`
-  }
-
-  let duration = raw.duration || "-"
-  if (duration === "-" && raw.submittedAt) {
-    const classStartTime = config.classes?.[student.class]?.startTime
-    if (classStartTime) {
-      const durationMs = Math.max(0, raw.submittedAt - classStartTime)
-      const totalMinutes = Math.floor(durationMs / 60000)
-      const remainSeconds = Math.floor((durationMs % 60000) / 1000)
-      duration = totalMinutes > 0 ? `${totalMinutes}분 ${remainSeconds}초` : `${remainSeconds}초`
-    }
-  }
-
-  const submission = {
-    ...raw,
-    text,
-    withSpace,
-    withoutSpace,
-    submitTime,
-    duration
-  }
-
-  res.render("student-detail", {
-    student,
-    submission,
-    msg: req.query.msg || ""
+const { error } = await supabase
+  .from("class_configs")
+  .upsert({
+    class_name: className,
+    owner_id: finalOwnerId,
+    topic: topic,
+    min_chars: Number(minChars || 500),
+    duration_minutes: Number(durationMinutes || 50),
+    started: currentConfig.started,
+    start_time: currentConfig.startTime,
+    end_time: currentConfig.endTime
   })
+
+if (error) {
+  console.error(error)
+  return res.redirect("/admin?msg=" + encodeURIComponent("분반 설정 저장 중 오류가 발생했습니다."))
+}
+
+await supabase
+  .from("students")
+  .update({ owner_id: finalOwnerId })
+  .eq("class_name", className)
+
+res.redirect("/admin?manageClass=" + encodeURIComponent(className) + "&msg=" + encodeURIComponent("분반 설정을 저장했습니다."))
+
+ } catch (err) { 
+console.error(err) 
+res.redirect("/admin?msg=" + encodeURIComponent("분반 설정 저장 중 오류가 발생했습니다."))
+ }
+ })
+
+
+app.post("/startClass", requireAdmin, async (req, res) => {
+  try {
+    const { className } = req.body
+
+    const classConfig = await getClassConfigFromDb(className)
+
+    if (req.session.adminRole !== "super") {
+      const owner = classConfig.ownerId || ""
+      if (owner && owner !== req.session.adminId) {
+        return res.redirect("/admin?msg=" + encodeURIComponent("해당 분반은 시작할 수 없습니다."))
+      }
+    }
+
+    const now = Date.now()
+    const duration = Number(classConfig.durationMinutes || 50)
+
+    const { error } = await supabase
+      .from("class_configs")
+      .update({
+        started: true,
+        start_time: now,
+        end_time: now + duration * 60 * 1000
+      })
+      .eq("class_name", className)
+
+    if (error) {
+      console.error(error)
+      return res.redirect("/admin?msg=" + encodeURIComponent("분반 시작 중 오류가 발생했습니다."))
+    }
+
+    res.redirect(
+      "/admin?manageClass=" +
+        encodeURIComponent(className) +
+        "&msg=" +
+        encodeURIComponent("시작되었습니다.")
+    )
+  } catch (err) {
+    console.error(err)
+    res.redirect("/admin?msg=" + encodeURIComponent("분반 시작 중 오류가 발생했습니다."))
+  }
 })
 
-app.get("/download/student/:studentId", requireAdmin, (req, res) => {
-  const students = readJSON("students.json")
-  const submissions = readJSON("submissions.json")
-  const config = readJSON("config.json")
 
-  const student = students.find(s => s.studentId === req.params.studentId)
-  const sub = submissions[req.params.studentId] || {}
+  app.post("/stopClass", requireAdmin, async (req, res) => {
+    try {
+      const { className } = req.body
 
-  if (!student || !studentVisibleToAdmin(req, student, config)) {
-    return res.send("학생 정보를 찾을 수 없습니다.")
+      const classConfig = await getClassConfigFromDb(className)
+
+      if (req.session.adminRole !== "super") {
+        const owner = classConfig.ownerId || ""
+        if (owner && owner !== req.session.adminId) {
+         return res.redirect("/admin?msg=" + encodeURIComponent("해당 분반은 종료할 수 없습니다."))
+       }
+     }
+     const { error } = await supabase
+       .from("class_configs")
+       .update({
+         started: false,
+         end_time: Date.now()
+       })
+       .eq("class_name", className)
+
+     if (error) {
+       console.error(error)
+       return res.redirect("/admin?msg=" + encodeURIComponent("분반 종료 중 오류가 발생했습니다."))
+     }
+
+    res.redirect(
+       "/admin?manageClass=" +
+       encodeURIComponent(className) +
+       "&msg=" +
+       encodeURIComponent("종료되었습니다.")
+     )
+   } catch (err) {
+     console.error(err)
+     res.redirect("/admin?msg=" + encodeURIComponent("분반 종료 중 오류가 발생했습니다."))
+   }
+ })
+
+app.post("/unlock-student", requireAdmin, async (req, res) => {
+try {
+const studentId = req.body.studentId
+
+await supabase
+  .from("submissions")
+  .update({
+    locked: false,
+    warning_count: 0,
+    approval_requested: false
+  })
+  .eq("student_id", studentId)
+
+res.redirect("/admin?msg=" + encodeURIComponent("입력 잠금을 해제했습니다."))
+
+} catch (err) {
+console.error(err)
+res.redirect("/admin?msg=" + encodeURIComponent("오류 발생"))
+}
+})
+
+app.post("/approve-request", requireAdmin, async (req, res) => {
+try {
+const studentId = req.body.studentId
+
+await supabase
+  .from("submissions")
+  .update({
+    locked: false,
+    warning_count: 0,
+    approval_requested: false
+  })
+  .eq("student_id", studentId)
+
+res.redirect("/admin?msg=" + encodeURIComponent("승인 요청을 처리했습니다."))
+
+} catch (err) {
+console.error(err)
+res.redirect("/admin?msg=" + encodeURIComponent("오류 발생"))
+}
+})
+
+app.post("/comment", requireAdmin, async (req, res) => {
+try {
+const studentId = req.body.studentId
+const comment = req.body.comment
+
+await supabase
+  .from("submissions")
+  .update({
+    comment: comment
+  })
+  .eq("student_id", studentId)
+
+res.redirect(
+  "/admin/student/" +
+    studentId +
+    "?msg=" +
+    encodeURIComponent("코멘트를 저장했습니다.")
+)
+
+} catch (err) {
+console.error(err)
+res.redirect("/admin?msg=" + encodeURIComponent("오류 발생"))
+}
+})
+
+
+
+
+
+app.get("/admin/student/:studentId", requireAdmin, async (req, res) => {
+try {
+const studentId = req.params.studentId
+
+const { data: studentRow, error: studentError } = await supabase
+  .from("students")
+  .select("*")
+  .eq("student_id", studentId)
+  .maybeSingle()
+
+if (studentError || !studentRow) {
+  return res.send("학생 정보를 찾을 수 없습니다.")
+}
+
+const student = {
+  name: studentRow.name,
+  studentId: studentRow.student_id,
+  class: studentRow.class_name || "",
+  ownerId: studentRow.owner_id || ""
+}
+
+const { data: subRow } = await supabase
+  .from("submissions")
+  .select("*")
+  .eq("student_id", studentId)
+  .maybeSingle()
+
+const classConfig = await getClassConfigFromDb(student.class || "")
+
+const raw = subRow || {
+  text: "",
+  comment: "",
+  submitted: false,
+  locked: false,
+  approval_requested: false,
+  with_space: 0,
+  without_space: 0,
+  submit_time: "",
+  submitted_at: null,
+  duration: ""
+}
+
+const text = raw.text || ""
+const withSpace = raw.with_space ?? text.length
+const withoutSpace = raw.without_space ?? text.replace(/\s/g, "").length
+
+let submitTime = raw.submit_time || "-"
+if (submitTime === "-" && raw.submitted_at) {
+  const d = new Date(raw.submitted_at)
+  const yyyy = d.getFullYear()
+  const mm = String(d.getMonth() + 1).padStart(2, "0")
+  const dd = String(d.getDate()).padStart(2, "0")
+  const hh = String(d.getHours()).padStart(2, "0")
+  const mi = String(d.getMinutes()).padStart(2, "0")
+  const ss = String(d.getSeconds()).padStart(2, "0")
+  submitTime = `${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss}`
+}
+
+let duration = raw.duration || "-"
+if (duration === "-" && raw.submitted_at) {
+  const classStartTime = classConfig.startTime
+  if (classStartTime) {
+    const durationMs = Math.max(0, raw.submitted_at - classStartTime)
+    const totalMinutes = Math.floor(durationMs / 60000)
+    const remainSeconds = Math.floor((durationMs % 60000) / 1000)
+    duration = totalMinutes > 0 ? `${totalMinutes}분 ${remainSeconds}초` : `${remainSeconds}초`
   }
+}
 
+const submission = {
+  text,
+  comment: raw.comment || "",
+  submitted: raw.submitted === true,
+  locked: raw.locked === true,
+  approvalRequested: raw.approval_requested === true,
+  withSpace,
+  withoutSpace,
+  submitTime,
+  duration
+}
+
+res.render("student-detail", {
+  student,
+  submission,
+  msg: req.query.msg || ""
+})
+} catch (err) {
+console.error(err)
+res.send("학생 정보를 찾을 수 없습니다.")
+}
+})
+
+app.get("/download/student/:studentId", requireAdmin, async (req, res) => {
+try {
+const studentId = req.params.studentId
+
+const { data: studentRow, error: studentError } = await supabase
+  .from("students")
+  .select("*")
+  .eq("student_id", studentId)
+  .maybeSingle()
+
+if (studentError || !studentRow) {
+  return res.send("학생 정보를 찾을 수 없습니다.")
+}
+
+const student = {
+  name: studentRow.name,
+  studentId: studentRow.student_id,
+  class: studentRow.class_name || "",
+  ownerId: studentRow.owner_id || ""
+}
+
+const { data: subRow } = await supabase
+  .from("submissions")
+  .select("*")
+  .eq("student_id", studentId)
+  .maybeSingle()
+
+const classConfig = await getClassConfigFromDb(student.class || "")
+const sub = subRow || {}
+
+const text = sub.text || ""
+const withSpace = sub.with_space ?? text.length
+const withoutSpace = sub.without_space ?? text.replace(/\s/g, "").length
+
+let submitTime = sub.submit_time || "-"
+if (submitTime === "-" && sub.submitted_at) {
+  const d = new Date(sub.submitted_at)
+  const yyyy = d.getFullYear()
+  const mm = String(d.getMonth() + 1).padStart(2, "0")
+  const dd = String(d.getDate()).padStart(2, "0")
+  const hh = String(d.getHours()).padStart(2, "0")
+  const mi = String(d.getMinutes()).padStart(2, "0")
+  const ss = String(d.getSeconds()).padStart(2, "0")
+  submitTime = `${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss}`
+}
+
+let duration = sub.duration || "-"
+if (duration === "-" && sub.submitted_at) {
+  const classStartTime = classConfig.startTime
+  if (classStartTime) {
+    const durationMs = Math.max(0, sub.submitted_at - classStartTime)
+    const totalMinutes = Math.floor(durationMs / 60000)
+    const remainSeconds = Math.floor((durationMs % 60000) / 1000)
+    duration = totalMinutes > 0 ? `${totalMinutes}분 ${remainSeconds}초` : `${remainSeconds}초`
+  }
+}
+
+const content = [
+  "이름: " + student.name,
+  "학번: " + student.studentId,
+  "분반: " + (student.class || ""),
+  "제출 상태: " + (sub.submitted ? "제출 완료" : "미제출"),
+  "제출 시각: " + submitTime,
+  "작성 소요시간: " + duration,
+  "글자수(공백 포함): " + withSpace,
+  "글자수(공백 제외): " + withoutSpace,
+  "",
+  "[글 내용]",
+  text,
+  "",
+  "[코멘트]",
+  sub.comment || ""
+].join("\n")
+
+const safeName = `${student.studentId}_${student.name}`.replace(/[^\w\d]/g, "_")
+
+res.setHeader("Content-Type", "text/plain; charset=utf-8")
+res.setHeader("Content-Disposition", `attachment; filename="${safeName}.txt"`)
+res.send(content)
+} catch (err) {
+console.error(err)
+res.send("학생 정보를 찾을 수 없습니다.")
+}
+})
+
+app.post("/bulk-download", requireAdmin, async (req, res) => {
+  try {
+    const idsRaw = req.body.ids || ""
+    const ids = String(idsRaw).split(",").map(v => v.trim()).filter(Boolean)
+
+    // 학생 목록 (DB)
+    const { data: studentRows, error: studentError } = await supabase
+      .from("students")
+      .select("*")
+
+    if (studentError) {
+      console.error(studentError)
+      return res.redirect("/admin?msg=" + encodeURIComponent("학생 목록 조회 오류"))
+    }
+
+    const allStudents = (studentRows || []).map(s => ({
+      name: s.name,
+      studentId: s.student_id,
+      class: s.class_name || "",
+      ownerId: s.owner_id || ""
+    }))
+
+    // 제출 목록 (DB)
+    const { data: submissionRows, error: submissionError } = await supabase
+      .from("submissions")
+      .select("*")
+
+    if (submissionError) {
+      console.error(submissionError)
+      return res.redirect("/admin?msg=" + encodeURIComponent("제출 목록 조회 오류"))
+    }
+
+    const submissions = {}
+    ;(submissionRows || []).forEach(row => {
+      submissions[row.student_id] = {
+        submitted: row.submitted === true,
+        submitTime: row.submit_time || "",
+        duration: row.duration || "",
+        withSpace: row.with_space || 0,
+        withoutSpace: row.without_space || 0,
+        text: row.text || "",
+        comment: row.comment || ""
+      }
+    })
+
+    // 권한 필터
+    const config = readJSON("config.json")
+    const visibleStudents = visibleStudentsForAdmin(req, allStudents, config)
+    const visibleIds = new Set(visibleStudents.map(s => s.studentId))
+
+    const rows = [
+      ["name","studentId","class","submitted","submitTime","duration","withSpace","withoutSpace","text","comment"].join(",")
+    ]
+
+    ids.forEach(id => {
+      if (!visibleIds.has(id)) return
+
+      const student = visibleStudents.find(s => s.studentId === id)
+      const sub = submissions[id] || {}
+      if (!student) return
+
+      rows.push([
+        csvEscape(student.name),
+        csvEscape(student.studentId),
+        csvEscape(student.class || ""),
+        csvEscape(sub.submitted ? "제출 완료" : "미제출"),
+        csvEscape(sub.submitTime || ""),
+        csvEscape(sub.duration || ""),
+        csvEscape(sub.withSpace || 0),
+        csvEscape(sub.withoutSpace || 0),
+        csvEscape(sub.text || ""),
+        csvEscape(sub.comment || "")
+      ].join(","))
+    })
+
+    res.setHeader("Content-Type", "text/csv; charset=utf-8")
+    res.setHeader("Content-Disposition", 'attachment; filename="selected_students.csv"')
+    res.send("\uFEFF" + rows.join("\n"))
+
+  } catch (err) {
+    console.error(err)
+    res.redirect("/admin?msg=" + encodeURIComponent("일괄 다운로드 오류"))
+  }
+})
+
+
+app.post("/download-class", requireAdmin, async (req, res) => {
+try {
+
+  const className = req.body.className
+
+  const { data: studentRows, error: studentError } = await supabase
+  .from("students")
+  .select("*")
+  .eq("class_name", className)
+
+if (studentError) {
+  console.error(studentError)
+  return res.redirect("/admin?msg=" + encodeURIComponent("분반 학생 조회 오류"))
+}
+
+const studentIds = (studentRows || []).map(s => s.student_id)
+
+const { data: submissionRows, error: submissionError } = await supabase
+  .from("submissions")
+  .select("*")
+
+if (submissionError) {
+  console.error(submissionError)
+  return res.redirect("/admin?msg=" + encodeURIComponent("분반 제출 조회 오류"))
+}
+
+const submissions = {}
+;(submissionRows || []).forEach(row => {
+  if (studentIds.includes(row.student_id)) {
+    submissions[row.student_id] = row
+  }
+})
+
+const archiver = require("archiver")
+
+res.attachment(`class_${className}_submissions.zip`)
+
+const archive = archiver("zip")
+archive.pipe(res)
+
+;(studentRows || []).forEach(student => {
+  const sub = submissions[student.student_id]
+
+if (sub && sub.text) {
   const text = sub.text || ""
-  const withSpace = sub.withSpace ?? text.length
-  const withoutSpace = sub.withoutSpace ?? text.replace(/\s/g, "").length
+  const withSpace = sub.with_space ?? text.length
+  const withoutSpace = sub.without_space ?? text.replace(/\s/g, "").length
 
-  let submitTime = sub.submitTime || "-"
-  if (submitTime === "-" && sub.submittedAt) {
-    const d = new Date(sub.submittedAt)
+  let submitTime = sub.submit_time || "-"
+  if (submitTime === "-" && sub.submitted_at) {
+    const d = new Date(sub.submitted_at)
     const yyyy = d.getFullYear()
     const mm = String(d.getMonth() + 1).padStart(2, "0")
     const dd = String(d.getDate()).padStart(2, "0")
@@ -1046,20 +1599,11 @@ app.get("/download/student/:studentId", requireAdmin, (req, res) => {
   }
 
   let duration = sub.duration || "-"
-  if (duration === "-" && sub.submittedAt) {
-    const classStartTime = config.classes?.[student.class]?.startTime
-    if (classStartTime) {
-      const durationMs = Math.max(0, sub.submittedAt - classStartTime)
-      const totalMinutes = Math.floor(durationMs / 60000)
-      const remainSeconds = Math.floor((durationMs % 60000) / 1000)
-      duration = totalMinutes > 0 ? `${totalMinutes}분 ${remainSeconds}초` : `${remainSeconds}초`
-    }
-  }
 
   const content = [
     "이름: " + student.name,
-    "학번: " + student.studentId,
-    "분반: " + (student.class || ""),
+    "학번: " + student.student_id,
+    "분반: " + (student.class_name || ""),
     "제출 상태: " + (sub.submitted ? "제출 완료" : "미제출"),
     "제출 시각: " + submitTime,
     "작성 소요시간: " + duration,
@@ -1073,86 +1617,21 @@ app.get("/download/student/:studentId", requireAdmin, (req, res) => {
     sub.comment || ""
   ].join("\n")
 
-  const safeName = `${student.studentId}_${student.name}`.replace(/[^\w\d]/g, "_")
-
-  res.setHeader("Content-Type", "text/plain; charset=utf-8")
-  res.setHeader("Content-Disposition", `attachment; filename="${safeName}.txt"`)
-  res.send(content)
-})
-
-app.post("/bulk-download", requireAdmin, (req, res) => {
-  const idsRaw = req.body.ids || ""
-  const ids = String(idsRaw).split(",").map(v => v.trim()).filter(Boolean)
-
-  const allStudents = readJSON("students.json")
-  const submissions = readJSON("submissions.json")
-  const config = readJSON("config.json")
-
-  const visibleStudents = visibleStudentsForAdmin(req, allStudents, config)
-  const visibleIds = new Set(visibleStudents.map(s => s.studentId))
-
-  const rows = [
-    ["name", "studentId", "class", "submitted", "submitTime", "duration", "withSpace", "withoutSpace", "text", "comment"].join(",")
-  ]
-
-  ids.forEach(id => {
-    if (!visibleIds.has(id)) return
-
-    const student = visibleStudents.find(s => s.studentId === id)
-    const sub = submissions[id] || {}
-    if (!student) return
-
-    rows.push([
-      csvEscape(student.name),
-      csvEscape(student.studentId),
-      csvEscape(student.class || ""),
-      csvEscape(sub.submitted ? "제출 완료" : "미제출"),
-      csvEscape(sub.submitTime || ""),
-      csvEscape(sub.duration || ""),
-      csvEscape(sub.withSpace || 0),
-      csvEscape(sub.withoutSpace || 0),
-      csvEscape(sub.text || ""),
-      csvEscape(sub.comment || "")
-    ].join(","))
+  archive.append(content, {
+    name: `${student.class_name || ""}_${student.student_id}_${student.name}.txt`
   })
-
-  res.setHeader("Content-Type", "text/csv; charset=utf-8")
-  res.setHeader("Content-Disposition", 'attachment; filename="selected_students.csv"')
-  res.send("\uFEFF" + rows.join("\n"))
-})
-
-app.post("/download-class", requireAdmin, (req, res) => {
-
-  const className = req.body.className
-
-  const students = readJSON("students.json")
-  const submissions = readJSON("submissions.json")
-
-  const archiver = require("archiver")
-
-  res.attachment(`class_${className}_submissions.zip`)
-
-  const archive = archiver("zip")
-  archive.pipe(res)
-
-  students
-    .filter(s => s.class === className)
-    .forEach(student => {
-
-      const sub = submissions[student.studentId]
-
-      if (sub && sub.text) {
-        archive.append(sub.text, {
-          name: `${student.class}_${student.studentId}_${student.name}.txt`
-        })
-      }
-
-    })
-
-  archive.finalize()
+}
 
 })
 
+archive.finalize()
+
+} catch (err) {
+console.error(err)
+res.redirect("/admin?msg=" + encodeURIComponent("분반 다운로드 오류"))
+}
+})
+    
 app.post("/delete-professor", requireAdmin, (req, res) => {
   if (req.session.adminRole !== "super") {
     return res.redirect("/admin?msg=" + encodeURIComponent("권한이 없습니다."))
@@ -1199,32 +1678,28 @@ app.post("/delete-professor", requireAdmin, (req, res) => {
   res.redirect("/admin?msg=" + encodeURIComponent("교수자를 삭제했습니다."))
 })
 
+app.post("/delete-student", requireAdmin, async (req, res) => {
+  try {
+    const studentId = String(req.body.studentId || "").trim()
 
-app.post("/delete-student", requireAdmin, (req, res) => {
-  const studentId = String(req.body.studentId || "").trim()
+    const { data: student } = await supabase
+      .from("students")
+      .select("*")
+      .eq("student_id", studentId)
+      .maybeSingle()
 
-  const students = readJSON("students.json")
-  const submissions = readJSON("submissions.json")
-
-  const student = students.find(s => s.studentId === studentId)
-  if (!student) {
-    return res.redirect("/admin?msg=" + encodeURIComponent("학생을 찾을 수 없습니다."))
-  }
-
-  if (req.session.adminRole !== "super") {
-    if (String(student.ownerId || "") !== req.session.adminId) {
-      return res.redirect("/admin?msg=" + encodeURIComponent("삭제 권한이 없습니다."))
+    if (!student) {
+      return res.redirect("/admin?msg=" + encodeURIComponent("학생 없음"))
     }
+
+    await supabase.from("submissions").delete().eq("student_id", studentId)
+    await supabase.from("students").delete().eq("student_id", studentId)
+
+    res.redirect("/admin?msg=" + encodeURIComponent("삭제 완료"))
+  } catch (err) {
+    console.error(err)
+    res.redirect("/admin?msg=" + encodeURIComponent("삭제 오류"))
   }
-
-  const nextStudents = students.filter(s => s.studentId !== studentId)
-
-  delete submissions[studentId]
-
-  writeJSON("students.json", nextStudents)
-  writeJSON("submissions.json", submissions)
-
-  res.redirect("/admin?msg=" + encodeURIComponent("학생을 삭제했습니다."))
 })
 
 app.get("/admin/student-edit/:id", requireAdmin, (req, res) => {

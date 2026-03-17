@@ -6,15 +6,15 @@
     "name": "생성관리자"
   },
   {
-    "id": "prof1",
+    "id": "pf1",
     "password": "1234",
     "role": "prof",
-    "name": "교수자"
+    "name": "박보연1"
   },
   {
-    "id": "prof2",
+    "id": "pf2",
     "password": "1234",
     "role": "prof",
-    "name": "교수자2"
+    "name": "박보연2"
   }
 ]
