@@ -669,6 +669,11 @@ app.get("/result/:id", async (req, res) => {
    관리자 로그인
 ------------------------- */
 
+app.get("/admin-login", (req, res) => {
+  res.render("admin-login")
+})
+
+
 app.post("/admin-login", async (req, res) => {
 try {
 const id = req.body.id
