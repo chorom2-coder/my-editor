@@ -933,28 +933,53 @@ professorFilter,
   })
 })
 
-app.post("/add-professor", requireAdmin, (req, res) => {
-  if (req.session.adminRole !== "super") {
-    return res.send("초관리자만 교수자를 추가할 수 있습니다.")
-  }
-
-  const { name, id, password } = req.body
-  const admins = readJSON("admins.json")
+app.post("/add-professor", requireAdmin, async (req, res) => {
+try {
+if (req.session.adminRole !== "super") {
+return res.send("초관리자만 교수자를 추가할 수 있습니다.")
+}
 
 
-  if (admins.find(a => a.id === id)) {
-    return res.send("이미 존재하는 교수자 ID입니다.")
-  }
 
-  admins.push({
-    id,
-    password,
+const name = req.body.name
+const id = req.body.id
+const password = req.body.password
+
+const { data: existing, error: checkError } = await supabase
+  .from("admins")
+  .select("id")
+  .eq("id", id)
+  .maybeSingle()
+
+if (checkError) {
+  console.error(checkError)
+  return res.redirect("/admin?msg=" + encodeURIComponent("교수자 확인 중 오류가 발생했습니다."))
+}
+
+if (existing) {
+  return res.redirect("/admin?msg=" + encodeURIComponent("이미 존재하는 교수자 ID입니다."))
+}
+
+const { error: insertError } = await supabase
+  .from("admins")
+  .insert({
+    id: id,
+    password: password,
     role: "prof",
-    name
+    name: name
   })
 
-  writeJSON("admins.json", admins)
-  res.redirect("/admin?msg=" + encodeURIComponent("교수자를 추가했습니다."))
+if (insertError) {
+  console.error(insertError)
+  return res.redirect("/admin?msg=" + encodeURIComponent("교수자 추가 중 오류가 발생했습니다."))
+}
+
+res.redirect("/admin?msg=" + encodeURIComponent("교수자를 추가했습니다."))
+
+} catch (err) {
+console.error(err)
+res.redirect("/admin?msg=" + encodeURIComponent("교수자 추가 중 오류가 발생했습니다."))
+}
 })
 
 app.post("/change-password", requireAdmin, (req, res) => {
