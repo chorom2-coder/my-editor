@@ -669,26 +669,36 @@ app.get("/result/:id", async (req, res) => {
    관리자 로그인
 ------------------------- */
 
-app.get("/admin-login", (req, res) => {
-  res.render("admin-login")
+app.post("/admin-login", async (req, res) => {
+try {
+const id = req.body.id
+const password = req.body.password
+
+const { data: admin, error } = await supabase
+  .from("admins")
+  .select("*")
+  .eq("id", id)
+  .eq("password", password)
+  .maybeSingle()
+
+if (error || !admin) {
+  return res.send("관리자 로그인 실패. 아이디와 비밀번호를 확인하세요.")
+}
+
+req.session.admin = true
+req.session.adminId = admin.id
+req.session.adminName = admin.name || admin.id
+req.session.adminRole = admin.role || "prof"
+
+res.redirect("/admin")
+
+
+} catch (err) {
+console.error(err)
+res.status(500).send("관리자 로그인 중 오류가 발생했습니다.")
+}
 })
 
-app.post("/admin-login", (req, res) => {
-  const { id, password } = req.body
-  const admins = readJSON("admins.json")
-
-  const admin = admins.find(a => a.id === id && a.password === password)
-  if (!admin) {
-    return res.send("관리자 로그인 실패. 아이디와 비밀번호를 확인하세요.")
-  }
-
-  req.session.admin = true
-  req.session.adminId = admin.id
-  req.session.adminName = admin.name || admin.id
-  req.session.adminRole = admin.role || "prof"
-
-  res.redirect("/admin")
-})
 
 app.get("/logout", (req, res) => {
   req.session.destroy(() => {
