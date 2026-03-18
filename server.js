@@ -749,7 +749,22 @@ const submissions = {}
 
 
   const config = readJSON("config.json")
-  const admins = readJSON("admins.json")
+
+const { data: adminRows, error: adminError } = await supabase
+  .from("admins")
+  .select("*")
+
+if (adminError) {
+  console.error(adminError)
+  return res.send("관리자 목록을 불러오는 중 오류가 발생했습니다.")
+}
+
+const admins = (adminRows || []).map(a => ({
+  id: a.id,
+  password: a.password,
+  name: a.name || a.id,
+  role: a.role || "prof"
+}))
 
 const professorCount = admins.filter(a => (a.role || "prof") !== "super").length
 
