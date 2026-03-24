@@ -392,12 +392,12 @@
                   <% if (sub.approvalRequested) { %>
                     <form method="POST" action="/approve-request" class="inline-mini-form js-student-status-form">
                       <input type="hidden" name="studentId" value="<%= student.studentId %>">
-                      <button type="submit" class="status-action action-approve">입력 제한</button>
+                      <button type="submit" class="btn-danger btn-sm">입력 제한</button>
                     </form>
                   <% } else if (sub.locked) { %>
                     <form method="POST" action="/unlock-student" class="inline-mini-form js-student-status-form">
                       <input type="hidden" name="studentId" value="<%= student.studentId %>">
-                      <button type="submit" class="status-action action-lock">입력 제한</button>
+                      <button type="submit" class="btn-danger btn-sm">입력 제한</button>
                     </form>
                   <% } else { %>
                     <span class="badge badge-gray">정상</span>

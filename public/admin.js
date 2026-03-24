@@ -33,6 +33,7 @@ function applySavedFiltersIfEmpty() {
 }
 
 async function refreshStudentListPanel(forceFull) {
+  if (document.hidden) return
   try {
     const currentY = window.scrollY
     const url = new URL(window.location.href)
@@ -57,7 +58,6 @@ async function refreshStudentListPanel(forceFull) {
       persistFilterState()
     }
   } catch (e) {
-    console.log("student list refresh skipped")
   }
 }
 
@@ -73,7 +73,7 @@ function renderStatusCell(studentId, state) {
     cell.innerHTML = `
       <form method="POST" action="/approve-request" class="inline-mini-form js-student-status-form">
         <input type="hidden" name="studentId" value="${studentId}">
-        <button type="submit" class="status-action action-approve">입력 제한</button>
+        <button type="submit" class="btn-danger btn-sm">입력 제한</button>
       </form>
     `
     return
@@ -83,17 +83,13 @@ function renderStatusCell(studentId, state) {
     cell.innerHTML = `
       <form method="POST" action="/unlock-student" class="inline-mini-form js-student-status-form">
         <input type="hidden" name="studentId" value="${studentId}">
-        <button type="submit" class="status-action action-lock">입력 제한</button>
+        <button type="submit" class="btn-danger btn-sm">입력 제한</button>
       </form>
     `
     return
   }
 
   cell.innerHTML = NORMAL_STATUS_HTML
-}
-
-function renderStudentRow(studentId, nextState) {
-  renderStatusCell(studentId, nextState)
 }
 
 function hookStatusForms() {
@@ -118,7 +114,7 @@ function hookStatusForms() {
     })
     const data = await res.json()
     if (!data.ok) return
-    renderStudentRow(data.studentId, {
+    renderStatusCell(data.studentId, {
       approvalRequested: data.approvalRequested === true,
       locked: data.locked === true
     })
@@ -131,7 +127,7 @@ function connectAdminEvents() {
     try {
       const payload = JSON.parse(e.data || "{}")
       if (!payload.studentId) return
-      renderStudentRow(payload.studentId, payload)
+      renderStatusCell(payload.studentId, payload)
     } catch (err) {
     }
   })
@@ -187,8 +183,13 @@ window.addEventListener("load", function () {
   setInterval(refreshStudentListPanel, 5000)
 
   if (window.ADMIN_PAGE_BOOT?.isInitialLoad === true) {
-    setTimeout(function () {
+    const runInitialFullRefresh = function () {
       refreshStudentListPanel(true)
-    }, 100)
+    }
+    if (typeof window.requestIdleCallback === "function") {
+      window.requestIdleCallback(runInitialFullRefresh, { timeout: 1200 })
+    } else {
+      setTimeout(runInitialFullRefresh, 700)
+    }
   }
 })
