@@ -305,6 +305,10 @@ document.addEventListener("fullscreenchange", () => {
   }
 })
 
+window.addEventListener("blur", () => {
+  sendWarn()
+})
+
 document.addEventListener("DOMContentLoaded", () => {
   updateCount()
   updateLockUI()
