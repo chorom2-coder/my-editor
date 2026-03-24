@@ -1,7 +1,6 @@
 require("dotenv").config()
 
 const express = require("express")
-const fs = require("fs")
 const path = require("path")
 const bodyParser = require("body-parser")
 const session = require("express-session")
@@ -38,23 +37,206 @@ function defaultValueByFile(file) {
   return {}
 }
 
-function readJSON(file) {
+async function readJSON(file) {
   try {
-    if (!fs.existsSync(file)) {
-      const def = defaultValueByFile(file)
-      fs.writeFileSync(file, JSON.stringify(def, null, 2), "utf8")
-      return def
+    if (file.includes("admins")) {
+      const { data, error } = await supabase.from("admins").select("*")
+      if (error) throw error
+      return (data || []).map(row => ({
+        id: row.id,
+        password: row.password,
+        name: row.name || row.id,
+        role: row.role || "prof"
+      }))
     }
-    const raw = fs.readFileSync(file, "utf8")
-    if (!raw.trim()) return defaultValueByFile(file)
-    return JSON.parse(raw)
+
+    if (file.includes("students")) {
+      const { data, error } = await supabase.from("students").select("*")
+      if (error) throw error
+      return (data || []).map(row => ({
+        name: row.name,
+        studentId: row.student_id,
+        class: row.class_name || "",
+        ownerId: row.owner_id || ""
+      }))
+    }
+
+    if (file.includes("submissions")) {
+      const { data, error } = await supabase.from("submissions").select("*")
+      if (error) throw error
+      const submissions = {}
+      ;(data || []).forEach(row => {
+        submissions[row.student_id] = {
+          name: row.name || "",
+          studentId: row.student_id,
+          class: row.class_name || "",
+          text: row.text || "",
+          submitted: row.submitted === true,
+          comment: row.comment || "",
+          warningCount: row.warning_count || 0,
+          locked: row.locked === true,
+          approvalRequested: row.approval_requested === true,
+          submittedAt: row.submitted_at || null,
+          submitTime: row.submit_time || "",
+          duration: row.duration || "",
+          withSpace: row.with_space || 0,
+          withoutSpace: row.without_space || 0
+        }
+      })
+      return submissions
+    }
+
+    if (file.includes("config")) {
+      const { data, error } = await supabase.from("class_configs").select("*")
+      if (error) throw error
+
+      const classes = {}
+      ;(data || []).forEach(row => {
+        classes[row.class_name] = {
+          ownerId: row.owner_id || "",
+          topic: row.topic || "주제를 입력하세요",
+          minChars: row.min_chars ?? 500,
+          durationMinutes: row.duration_minutes ?? 50,
+          started: row.started === true,
+          startTime: row.start_time ?? null,
+          endTime: row.end_time ?? null
+        }
+      })
+
+      return {
+        studentListRaw: "",
+        classes
+      }
+    }
+
+    return defaultValueByFile(file)
   } catch (e) {
+    console.error("readJSON fallback:", file, e.message || e)
     return defaultValueByFile(file)
   }
 }
 
-function writeJSON(file, data) {
-  fs.writeFileSync(file, JSON.stringify(data, null, 2), "utf8")
+async function writeJSON(file, data) {
+  if (file.includes("admins")) {
+    const rows = (Array.isArray(data) ? data : []).map(a => ({
+      id: a.id,
+      password: a.password,
+      name: a.name || a.id,
+      role: a.role || "prof"
+    }))
+
+    const ids = rows.map(r => r.id).filter(Boolean)
+    if (ids.length > 0) {
+      const { error: deleteError } = await supabase
+        .from("admins")
+        .delete()
+        .not("id", "in", `(${ids.map(v => `"${String(v).replace(/"/g, '\\"')}"`).join(",")})`)
+      if (deleteError) throw deleteError
+    } else {
+      const { error: deleteError } = await supabase.from("admins").delete().neq("id", "__never__")
+      if (deleteError) throw deleteError
+    }
+
+    if (rows.length > 0) {
+      const { error } = await supabase.from("admins").upsert(rows, { onConflict: "id" })
+      if (error) throw error
+    }
+    return
+  }
+
+  if (file.includes("students")) {
+    const rows = (Array.isArray(data) ? data : []).map(s => ({
+      name: s.name,
+      student_id: s.studentId,
+      class_name: s.class || "",
+      owner_id: s.ownerId || ""
+    }))
+    const ids = rows.map(r => r.student_id).filter(Boolean)
+    if (ids.length > 0) {
+      const { error: deleteError } = await supabase
+        .from("students")
+        .delete()
+        .not("student_id", "in", `(${ids.map(v => `"${String(v).replace(/"/g, '\\"')}"`).join(",")})`)
+      if (deleteError) throw deleteError
+    } else {
+      const { error: deleteError } = await supabase.from("students").delete().neq("student_id", "__never__")
+      if (deleteError) throw deleteError
+    }
+
+    if (rows.length > 0) {
+      const { error } = await supabase.from("students").upsert(rows, { onConflict: "student_id" })
+      if (error) throw error
+    }
+    return
+  }
+
+  if (file.includes("config")) {
+    const classes = data?.classes || {}
+    const classNames = Object.keys(classes)
+
+    if (classNames.length > 0) {
+      const rows = classNames.map(className => {
+        const cfg = classes[className] || defaultClassConfig()
+        return {
+          class_name: className,
+          owner_id: cfg.ownerId || "",
+          topic: cfg.topic || "주제를 입력하세요",
+          min_chars: Number(cfg.minChars ?? 500),
+          duration_minutes: Number(cfg.durationMinutes ?? 50),
+          started: cfg.started === true,
+          start_time: cfg.startTime ?? null,
+          end_time: cfg.endTime ?? null
+        }
+      })
+      const { error: upsertError } = await supabase.from("class_configs").upsert(rows, { onConflict: "class_name" })
+      if (upsertError) throw upsertError
+      const { error: deleteError } = await supabase
+        .from("class_configs")
+        .delete()
+        .not("class_name", "in", `(${classNames.map(v => `"${String(v).replace(/"/g, '\\"')}"`).join(",")})`)
+      if (deleteError) throw deleteError
+    } else {
+      const { error: deleteError } = await supabase.from("class_configs").delete().neq("class_name", "__never__")
+      if (deleteError) throw deleteError
+    }
+    return
+  }
+
+  if (file.includes("submissions")) {
+    const values = data && typeof data === "object" ? Object.values(data) : []
+    const rows = values.map(sub => ({
+      student_id: sub.studentId,
+      name: sub.name || "",
+      class_name: sub.class || "",
+      text: sub.text || "",
+      submitted: sub.submitted === true,
+      comment: sub.comment || "",
+      warning_count: Number(sub.warningCount || 0),
+      locked: sub.locked === true,
+      approval_requested: sub.approvalRequested === true,
+      submitted_at: sub.submittedAt ?? null,
+      submit_time: sub.submitTime || "",
+      duration: sub.duration || "",
+      with_space: Number(sub.withSpace || 0),
+      without_space: Number(sub.withoutSpace || 0)
+    }))
+    const ids = rows.map(r => r.student_id).filter(Boolean)
+    if (ids.length > 0) {
+      const { error: deleteError } = await supabase
+        .from("submissions")
+        .delete()
+        .not("student_id", "in", `(${ids.map(v => `"${String(v).replace(/"/g, '\\"')}"`).join(",")})`)
+      if (deleteError) throw deleteError
+    } else {
+      const { error: deleteError } = await supabase.from("submissions").delete().neq("student_id", "__never__")
+      if (deleteError) throw deleteError
+    }
+
+    if (rows.length > 0) {
+      const { error } = await supabase.from("submissions").upsert(rows, { onConflict: "student_id" })
+      if (error) throw error
+    }
+  }
 }
 
 function requireAdmin(req, res, next) {
@@ -125,20 +307,20 @@ async function getClassConfigFromDb(className) {
   }
 }
 
-function ensureClassConfig(className) {
-  const config = readJSON("config.json")
+async function ensureClassConfig(className) {
+  const config = await readJSON("config.json")
   if (!config.classes) config.classes = {}
 
   if (!config.classes[className]) {
     config.classes[className] = defaultClassConfig()
-    writeJSON("config.json", config)
+    await writeJSON("config.json", config)
   }
 
   return config.classes[className]
 }
 
-function ensureSubmission(student) {
-  const submissions = readJSON("submissions.json")
+async function ensureSubmission(student) {
+  const submissions = await readJSON("submissions.json")
   if (!submissions[student.studentId]) {
     submissions[student.studentId] = {
       name: student.name,
@@ -156,7 +338,7 @@ function ensureSubmission(student) {
       withSpace: 0,
       withoutSpace: 0
     }
-    writeJSON("submissions.json", submissions)
+    await writeJSON("submissions.json", submissions)
   }
   return submissions
 }
@@ -763,7 +945,7 @@ const submissions = {}
 })
 
 
-  const config = readJSON("config.json")
+  const config = await readJSON("config.json")
 
 const { data: adminRows, error: adminError } = await supabase
   .from("admins")
@@ -997,9 +1179,10 @@ res.redirect("/admin?msg=" + encodeURIComponent("교수자 추가 중 오류가 
 }
 })
 
-app.post("/change-password", requireAdmin, (req, res) => {
+app.post("/change-password", requireAdmin, async (req, res) => {
+  try {
   const { currentPassword, newPassword } = req.body
-  const admins = readJSON("admins.json")
+  const admins = await readJSON("admins.json")
 
   const target = admins.find(a => a.id === req.session.adminId)
   if (!target) return res.redirect("/admin?msg=" + encodeURIComponent("계정을 찾을 수 없습니다."))
@@ -1009,15 +1192,19 @@ app.post("/change-password", requireAdmin, (req, res) => {
   }
 
   target.password = newPassword
-  writeJSON("admins.json", admins)
+  await writeJSON("admins.json", admins)
   res.redirect("/admin?msg=" + encodeURIComponent("비밀번호를 변경했습니다."))
+  } catch (err) {
+    console.error(err)
+    res.redirect("/admin?msg=" + encodeURIComponent("비밀번호 변경 중 오류가 발생했습니다."))
+  }
 })
 
 
 app.post("/addStudents", requireAdmin, async (req, res) => {
   try {
     const list = req.body.list || ""
-    const config = readJSON("config.json")
+    const config = await readJSON("config.json")
 
     if (!config.classes) config.classes = {}
 
@@ -1109,7 +1296,7 @@ app.post("/addStudents", requireAdmin, async (req, res) => {
       }
     }
 
-    writeJSON("config.json", config)
+    await writeJSON("config.json", config)
 
     const message = `학생 명단을 저장했습니다 (${added}명)`
     res.redirect("/admin?msg=" + encodeURIComponent(message))
@@ -1553,7 +1740,7 @@ app.post("/bulk-download", requireAdmin, async (req, res) => {
     })
 
     // 권한 필터
-    const config = readJSON("config.json")
+    const config = await readJSON("config.json")
     const visibleStudents = visibleStudentsForAdmin(req, allStudents, config)
     const visibleIds = new Set(visibleStudents.map(s => s.studentId))
 
@@ -1687,7 +1874,8 @@ res.redirect("/admin?msg=" + encodeURIComponent("분반 다운로드 오류"))
 }
 })
     
-app.post("/delete-professor", requireAdmin, (req, res) => {
+app.post("/delete-professor", requireAdmin, async (req, res) => {
+  try {
   if (req.session.adminRole !== "super") {
     return res.redirect("/admin?msg=" + encodeURIComponent("권한이 없습니다."))
   }
@@ -1697,9 +1885,9 @@ app.post("/delete-professor", requireAdmin, (req, res) => {
     return res.redirect("/admin?msg=" + encodeURIComponent("교수자 ID가 없습니다."))
   }
 
-  const admins = readJSON("admins.json")
-  const students = readJSON("students.json")
-  const config = readJSON("config.json")
+  const admins = await readJSON("admins.json")
+  const students = await readJSON("students.json")
+  const config = await readJSON("config.json")
 
   const target = admins.find(a => a.id === id)
   if (!target) {
@@ -1726,11 +1914,15 @@ app.post("/delete-professor", requireAdmin, (req, res) => {
     })
   }
 
-  writeJSON("admins.json", nextAdmins)
-  writeJSON("students.json", students)
-  writeJSON("config.json", config)
+  await writeJSON("admins.json", nextAdmins)
+  await writeJSON("students.json", students)
+  await writeJSON("config.json", config)
 
   res.redirect("/admin?msg=" + encodeURIComponent("교수자를 삭제했습니다."))
+  } catch (err) {
+    console.error(err)
+    res.redirect("/admin?msg=" + encodeURIComponent("교수자 삭제 중 오류가 발생했습니다."))
+  }
 })
 
 app.post("/delete-student", requireAdmin, async (req, res) => {
@@ -1757,11 +1949,12 @@ app.post("/delete-student", requireAdmin, async (req, res) => {
   }
 })
 
-app.get("/admin/student-edit/:id", requireAdmin, (req, res) => {
+app.get("/admin/student-edit/:id", requireAdmin, async (req, res) => {
+  try {
   const studentId = req.params.id
 
-  const students = readJSON("students.json")
-  const admins = readJSON("admins.json")
+  const students = await readJSON("students.json")
+  const admins = await readJSON("admins.json")
 
   const student = students.find(s => s.studentId === studentId)
   if (!student) {
@@ -1783,12 +1976,17 @@ app.get("/admin/student-edit/:id", requireAdmin, (req, res) => {
     professorOptions,
     adminRole: req.session.adminRole
   })
+  } catch (err) {
+    console.error(err)
+    res.redirect("/admin?msg=" + encodeURIComponent("학생 수정 화면 로딩 오류"))
+  }
 })
 
-app.post("/update-student", requireAdmin, (req, res) => {
+app.post("/update-student", requireAdmin, async (req, res) => {
+  try {
   const { name, studentId, className, ownerId } = req.body
 
-  const students = readJSON("students.json")
+  const students = await readJSON("students.json")
 
   const student = students.find(s => s.studentId === studentId)
   if (!student) {
@@ -1808,9 +2006,13 @@ app.post("/update-student", requireAdmin, (req, res) => {
     student.ownerId = ownerId || ""
   }
 
-  writeJSON("students.json", students)
+  await writeJSON("students.json", students)
 
   res.redirect("/admin?msg=" + encodeURIComponent("학생 정보를 수정했습니다."))
+  } catch (err) {
+    console.error(err)
+    res.redirect("/admin?msg=" + encodeURIComponent("학생 정보 수정 오류"))
+  }
 })
 
 
