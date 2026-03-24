@@ -467,11 +467,16 @@ window.addEventListener("load", function () {
   }
 })
 
-async function refreshStudentListPanel() {
+const isInitialLoad = <%= isInitialLoad ? "true" : "false" %>
+
+async function refreshStudentListPanel(forceFull) {
   try {
     const currentY = window.scrollY
 
     const url = new URL(window.location.href)
+    if (forceFull) {
+      url.searchParams.set("loadFull", "1")
+    }
     url.searchParams.set("_ts", Date.now())
 
     const res = await fetch(url.toString(), { cache: "no-store" })
@@ -484,6 +489,11 @@ async function refreshStudentListPanel() {
     if (nextPanel && currentPanel) {
       currentPanel.innerHTML = nextPanel.innerHTML
       window.scrollTo(0, currentY)
+      if (forceFull) {
+        const currentUrl = new URL(window.location.href)
+        currentUrl.searchParams.set("loadFull", "1")
+        history.replaceState({}, "", currentUrl.toString())
+      }
     }
   } catch (e) {
     console.log("student list refresh skipped")
@@ -491,6 +501,11 @@ async function refreshStudentListPanel() {
 }
 
 setInterval(refreshStudentListPanel, 5000)
+if (isInitialLoad) {
+  setTimeout(function () {
+    refreshStudentListPanel(true)
+  }, 100)
+}
 
 function toggleAll() {
   const checked = document.getElementById("checkAll").checked

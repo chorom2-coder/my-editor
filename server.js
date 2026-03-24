@@ -445,6 +445,7 @@ const SAVE_GUARD_TTL_MS = 15000
 const SAVE_LOOKUP_TTL_MS = 5000
 const saveStudentCache = new Map()
 const saveClassConfigCache = new Map()
+const ADMIN_INITIAL_STUDENT_LIMIT = 120
 
 setInterval(() => {
   const now = Date.now()
@@ -502,6 +503,14 @@ async function getClassConfigForSaveCached(className) {
     cachedAt: now
   })
   return classConfig
+}
+
+async function warmupSupabaseConnection() {
+  try {
+    await supabase.from("admins").select("id").limit(1)
+  } catch (e) {
+    console.error("Supabase warmup skipped:", e.message || e)
+  }
 }
 
 function pushRealtimeEvent(className, eventName, payload = {}) {
@@ -1074,34 +1083,68 @@ app.get("/logout", (req, res) => {
 ------------------------- */
 
 app.get("/admin", requireAdmin, async (req, res) => {
-  const { data: studentRows, error: studentError } = await supabase
-  .from("students")
-  .select("*")
+  const search = (req.query.search || "").trim()
+  const classFilter = (req.query.class || "").trim()
+  const approvalOnly = (req.query.approvalOnly || "").trim()
+  const manageClass = (req.query.manageClass || "").trim()
+  const submissionFilter = (req.query.submissionFilter || "").trim()
+  const loadFull = String(req.query.loadFull || "") === "1"
+  const profQuery = Array.isArray(req.query.prof) ? req.query.prof[0] : req.query.prof
+  const professorFilter = String(profQuery || "").trim()
+  const initialLoad =
+    !loadFull &&
+    !search &&
+    !classFilter &&
+    !approvalOnly &&
+    !manageClass &&
+    !submissionFilter &&
+    !professorFilter
 
-if (studentError) {
-  console.error(studentError)
-  return res.send("학생 목록 오류")
-}
+  const studentsQuery = supabase
+    .from("students")
+    .select("name,student_id,class_name,owner_id")
+  if (initialLoad) {
+    studentsQuery.range(0, ADMIN_INITIAL_STUDENT_LIMIT - 1)
+  }
 
-const allStudents = (studentRows || []).map(s => ({
+  const submissionsQuery = supabase
+    .from("submissions")
+    .select("student_id,name,class_name,submitted,comment,warning_count,locked,approval_requested,submitted_at,submit_time,duration,with_space,without_space")
+  if (initialLoad) {
+    submissionsQuery.range(0, ADMIN_INITIAL_STUDENT_LIMIT - 1)
+  }
+
+  const [studentsResult, submissionsResult, config, adminsResult] = await Promise.all([
+    studentsQuery,
+    submissionsQuery,
+    readJSON("config.json"),
+    supabase.from("admins").select("id,name,role")
+  ])
+
+  if (studentsResult.error) {
+    console.error(studentsResult.error)
+    return res.send("학생 목록 오류")
+  }
+
+  if (submissionsResult.error) {
+    console.error(submissionsResult.error)
+    return res.send("제출 목록을 불러오는 중 오류가 발생했습니다.")
+  }
+
+  if (adminsResult.error) {
+    console.error(adminsResult.error)
+    return res.send("관리자 목록을 불러오는 중 오류가 발생했습니다.")
+  }
+
+const allStudents = (studentsResult.data || []).map(s => ({
   name: s.name,
   studentId: s.student_id,
   class: s.class_name || "",
   ownerId: s.owner_id || ""
 }))
- 
-
-const { data: submissionRows, error: submissionError } = await supabase
-  .from("submissions")
-  .select("*")
-
-if (submissionError) {
-  console.error(submissionError)
-  return res.send("제출 목록을 불러오는 중 오류가 발생했습니다.")
-}
 
 const submissions = {}
-;(submissionRows || []).forEach(row => {
+;(submissionsResult.data || []).forEach(row => {
   submissions[row.student_id] = {
     name: row.name || "",
     studentId: row.student_id,
@@ -1120,21 +1163,8 @@ const submissions = {}
   }
 })
 
-
-  const config = await readJSON("config.json")
-
-const { data: adminRows, error: adminError } = await supabase
-  .from("admins")
-  .select("*")
-
-if (adminError) {
-  console.error(adminError)
-  return res.send("관리자 목록을 불러오는 중 오류가 발생했습니다.")
-}
-
-const admins = (adminRows || []).map(a => ({
+const admins = (adminsResult.data || []).map(a => ({
   id: a.id,
-  password: a.password,
   name: a.name || a.id,
   role: a.role || "prof"
 }))
@@ -1149,14 +1179,6 @@ const totalSubmittedCount = allStudents.filter(s => {
   const sub = submissions[s.studentId] || {}
   return sub.submitted === true
 }).length
-
-  const search = (req.query.search || "").trim()
-  const classFilter = (req.query.class || "").trim()
-  const approvalOnly = (req.query.approvalOnly || "").trim()
-  const manageClass = (req.query.manageClass || "").trim()
-  const submissionFilter = (req.query.submissionFilter || "").trim()
- const profQuery = Array.isArray(req.query.prof) ? req.query.prof[0] : req.query.prof
-const professorFilter = String(profQuery || "").trim()
 
 const visibleStudentsBase = visibleStudentsForAdmin(req, allStudents, config)
 
@@ -1230,7 +1252,7 @@ if (approvalOnly === "yes") {
 
 let selectedClassConfig = null
 if (selectedManageClass) {
-  selectedClassConfig = await getClassConfigFromDb(selectedManageClass)
+  selectedClassConfig = config.classes?.[selectedManageClass] || await getClassConfigFromDb(selectedManageClass)
 }
 
   const visibleStudentsForCount = visibleStudentsBase
@@ -1302,7 +1324,8 @@ professorFilter,
     professorOptions,
     studentListText: req.session.adminRole === "super"
       ? (config.studentListRaw || visibleStudentListRaw)
-      : visibleStudentListRaw
+      : visibleStudentListRaw,
+    isInitialLoad: initialLoad
   })
 })
 
@@ -2249,4 +2272,14 @@ app.post("/update-student", requireAdmin, async (req, res) => {
 
 app.listen(PORT, () => {
   console.log("server running on port " + PORT)
+  setTimeout(() => {
+    warmupSupabaseConnection()
+  }, 0)
+})
+
+app.get("/healthz", (_req, res) => {
+  res.status(200).json({
+    ok: true,
+    uptimeSec: Math.floor(process.uptime())
+  })
 })
