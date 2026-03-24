@@ -14,6 +14,9 @@ let warnedOnce = false
 let warnedFive = false
 let warnedOne = false
 let currentEndTime = endTime
+let lastSavedText = editor.value
+let autoSaveInFlight = false
+let autoSaveQueued = false
 
 function showModal(title, text, buttons) {
   modalTitle.innerText = title
@@ -55,17 +58,19 @@ function updateLockUI() {
 async function manualSave() {
   if (isLocked) return
 
+  const textToSave = editor.value
   const res = await fetch("/save", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       studentId,
-      text: editor.value
+      text: textToSave
     })
   })
 
   const data = await res.json()
   if (data.ok) {
+    lastSavedText = textToSave
     showModal("임시저장 완료", "현재 내용이 저장되었습니다.", [
       { label: "확인", className: "btn-main", onClick: closeModal }
     ])
@@ -78,14 +83,36 @@ async function manualSave() {
 
 async function autoSave() {
   if (isLocked) return
-  await fetch("/save", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      studentId,
-      text: editor.value
+  if (autoSaveInFlight) {
+    autoSaveQueued = true
+    return
+  }
+
+  const textToSave = editor.value
+  if (textToSave === lastSavedText) return
+
+  autoSaveInFlight = true
+  try {
+    const res = await fetch("/save", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        studentId,
+        text: textToSave
+      })
     })
-  })
+    const data = await res.json()
+    if (data.ok) {
+      lastSavedText = textToSave
+    }
+  } catch (e) {
+  } finally {
+    autoSaveInFlight = false
+    if (autoSaveQueued) {
+      autoSaveQueued = false
+      setTimeout(autoSave, 100)
+    }
+  }
 }
 
 function submitWriting() {
@@ -292,6 +319,6 @@ statusEvents.addEventListener("class-config-updated", pollStatus)
 statusEvents.addEventListener("connected", pollStatus)
 statusEvents.onerror = function () {}
 
-setInterval(autoSave, 60000)
+setInterval(autoSave, 15000)
 setInterval(pollStatus, 4000)
 setInterval(updateTimer, 1000)

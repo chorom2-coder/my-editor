@@ -440,6 +440,69 @@ function studentVisibleToAdmin(req, student, config) {
 }
 
 const liveStatusClients = new Map()
+const saveGuardCache = new Map()
+const SAVE_GUARD_TTL_MS = 15000
+const SAVE_LOOKUP_TTL_MS = 5000
+const saveStudentCache = new Map()
+const saveClassConfigCache = new Map()
+
+setInterval(() => {
+  const now = Date.now()
+  for (const [studentId, entry] of saveGuardCache.entries()) {
+    if (!entry || now - entry.lastValidatedAt > SAVE_GUARD_TTL_MS * 4) {
+      saveGuardCache.delete(studentId)
+    }
+  }
+
+  for (const [studentId, entry] of saveStudentCache.entries()) {
+    if (!entry || now - entry.cachedAt > SAVE_LOOKUP_TTL_MS * 4) {
+      saveStudentCache.delete(studentId)
+    }
+  }
+
+  for (const [className, entry] of saveClassConfigCache.entries()) {
+    if (!entry || now - entry.cachedAt > SAVE_LOOKUP_TTL_MS * 4) {
+      saveClassConfigCache.delete(className)
+    }
+  }
+}, 60000)
+
+async function getStudentForSaveCached(studentId) {
+  const now = Date.now()
+  const cached = saveStudentCache.get(studentId)
+  if (cached && now - cached.cachedAt <= SAVE_LOOKUP_TTL_MS) {
+    return cached.value
+  }
+
+  const { data: student, error } = await supabase
+    .from("students")
+    .select("*")
+    .eq("student_id", studentId)
+    .maybeSingle()
+  if (error || !student) return null
+
+  saveStudentCache.set(studentId, {
+    value: student,
+    cachedAt: now
+  })
+  return student
+}
+
+async function getClassConfigForSaveCached(className) {
+  const key = String(className || "")
+  const now = Date.now()
+  const cached = saveClassConfigCache.get(key)
+  if (cached && now - cached.cachedAt <= SAVE_LOOKUP_TTL_MS) {
+    return cached.value
+  }
+
+  const classConfig = await getClassConfigFromDb(key)
+  saveClassConfigCache.set(key, {
+    value: classConfig,
+    cachedAt: now
+  })
+  return classConfig
+}
 
 function pushRealtimeEvent(className, eventName, payload = {}) {
   for (const [clientId, client] of liveStatusClients.entries()) {
@@ -676,21 +739,37 @@ const classConfig = await getClassConfigFromDb(student.class_name)
 })
 app.post("/save", async (req, res) => {
   try {
-    const { studentId, text } = req.body
+    const studentId = String(req.body.studentId || "").trim()
+    const text = String(req.body.text || "")
+    const now = Date.now()
 
-    const { data: student, error: studentError } = await supabase
-      .from("students")
-      .select("*")
-      .eq("student_id", studentId)
-      .maybeSingle()
-
-    if (studentError || !student) {
+    if (!studentId) {
       return res.json({ ok: false, msg: "학생 정보 없음" })
     }
 
-  const classConfig = await getClassConfigFromDb(student.class_name)
+    const cached = saveGuardCache.get(studentId)
+    if (
+      cached &&
+      cached.canSave === true &&
+      cached.text === text &&
+      now - cached.lastValidatedAt <= SAVE_GUARD_TTL_MS
+    ) {
+      return res.json({ ok: true, skipped: true })
+    }
+
+    const student = await getStudentForSaveCached(studentId)
+    if (!student) {
+      return res.json({ ok: false, msg: "학생 정보 없음" })
+    }
+
+  const classConfig = await getClassConfigForSaveCached(student.class_name)
 
     if (!classConfig || classConfig.started !== true) {
+      saveGuardCache.set(studentId, {
+        text,
+        canSave: false,
+        lastValidatedAt: now
+      })
       return res.json({ ok: false, msg: "현재 진행 중이 아닙니다." })
     }
 
@@ -701,11 +780,30 @@ app.post("/save", async (req, res) => {
       .maybeSingle()
 
     if (sub?.locked) {
+      saveGuardCache.set(studentId, {
+        text,
+        canSave: false,
+        lastValidatedAt: now
+      })
       return res.json({ ok: false, msg: "입력창이 차단되었습니다." })
     }
 
     if (sub?.submitted) {
+      saveGuardCache.set(studentId, {
+        text,
+        canSave: false,
+        lastValidatedAt: now
+      })
       return res.json({ ok: false, msg: "이미 제출되었습니다." })
+    }
+
+    if (sub && String(sub.text || "") === text) {
+      saveGuardCache.set(studentId, {
+        text,
+        canSave: true,
+        lastValidatedAt: now
+      })
+      return res.json({ ok: true, skipped: true })
     }
 
     // 👉 핵심: insert or update
@@ -722,6 +820,12 @@ app.post("/save", async (req, res) => {
       console.error(upsertError)
       return res.json({ ok: false, msg: "저장 실패" })
     }
+
+    saveGuardCache.set(studentId, {
+      text,
+      canSave: true,
+      lastValidatedAt: now
+    })
 
     return res.json({ ok: true })
   } catch (err) {
@@ -811,6 +915,8 @@ const classConfig = await getClassConfigFromDb(student.class_name)
       console.error(updateError)
       return res.json({ ok: false, msg: "제출 실패" })
     }
+
+    saveGuardCache.delete(studentId)
 
     return res.json({ ok: true })
   } catch (err) {
@@ -1290,7 +1396,7 @@ app.post("/addStudents", requireAdmin, async (req, res) => {
     let skipped = 0
 
     const lines = list.split("\n")
-    const rowsToInsert = []
+    const parsedRows = []
 
     for (const line of lines) {
       const parsed = parseStudentLine(line)
@@ -1314,33 +1420,48 @@ app.post("/addStudents", requireAdmin, async (req, res) => {
       }
 
       const ownerId = config.classes[className].ownerId || ""
+      parsedRows.push({
+        name: parsed.name,
+        student_id: parsed.studentId,
+        password: parsed.studentId,
+        class_name: className,
+        owner_id: ownerId
+      })
+    }
 
-      const { data: existing } = await supabase
+    const dedupedMap = new Map()
+    parsedRows.forEach(row => {
+      if (!row.student_id) return
+      if (dedupedMap.has(row.student_id)) {
+        skipped++
+      }
+      dedupedMap.set(row.student_id, row)
+    })
+    const candidateRows = [...dedupedMap.values()]
+
+    let rowsToInsert = candidateRows
+    if (candidateRows.length > 0) {
+      const candidateIds = candidateRows.map(r => r.student_id)
+      const { data: existingRows, error: existingError } = await supabase
         .from("students")
         .select("student_id")
-        .eq("student_id", parsed.studentId)
-        .maybeSingle()
+        .in("student_id", candidateIds)
 
-      if (existing) {
-        skipped++
-        continue
+      if (existingError) {
+        console.error(existingError)
+        return res.redirect("/admin?msg=" + encodeURIComponent("학생 중복 확인 중 오류가 발생했습니다."))
       }
 
- rowsToInsert.push({
-  name: parsed.name,
-  student_id: parsed.studentId,
-  password: parsed.studentId,
-  class_name: className,
-  owner_id: ownerId
-})
-
-      added++
+      const existingIdSet = new Set((existingRows || []).map(r => r.student_id))
+      rowsToInsert = candidateRows.filter(r => !existingIdSet.has(r.student_id))
+      skipped += existingIdSet.size
+      added = rowsToInsert.length
     }
 
     if (rowsToInsert.length > 0) {
       const { error } = await supabase
         .from("students")
-        .insert(rowsToInsert)
+        .upsert(rowsToInsert, { onConflict: "student_id" })
 
       if (error) {
         console.error(error)
@@ -1429,6 +1550,7 @@ if (error) {
   console.error(error)
   return res.redirect("/admin?msg=" + encodeURIComponent("분반 설정 저장 중 오류가 발생했습니다."))
 }
+saveClassConfigCache.delete(className)
 
 pushRealtimeEvent(className, "class-config-updated", {
   className,
@@ -1478,6 +1600,7 @@ app.post("/startClass", requireAdmin, async (req, res) => {
       console.error(error)
       return res.redirect("/admin?msg=" + encodeURIComponent("분반 시작 중 오류가 발생했습니다."))
     }
+    saveClassConfigCache.delete(className)
 
     pushRealtimeEvent(className, "class-status-changed", {
       className,
@@ -1521,6 +1644,7 @@ app.post("/startClass", requireAdmin, async (req, res) => {
        console.error(error)
        return res.redirect("/admin?msg=" + encodeURIComponent("분반 종료 중 오류가 발생했습니다."))
      }
+    saveClassConfigCache.delete(className)
 
     pushRealtimeEvent(className, "class-status-changed", {
       className,
@@ -2031,6 +2155,8 @@ app.post("/delete-student", requireAdmin, async (req, res) => {
 
     await supabase.from("submissions").delete().eq("student_id", studentId)
     await supabase.from("students").delete().eq("student_id", studentId)
+    saveGuardCache.delete(studentId)
+    saveStudentCache.delete(studentId)
 
     res.redirect("/admin?msg=" + encodeURIComponent("삭제 완료"))
   } catch (err) {
@@ -2107,6 +2233,9 @@ app.post("/update-student", requireAdmin, async (req, res) => {
     .from("submissions")
     .update({ name, class_name: className })
     .eq("student_id", studentId)
+  saveStudentCache.delete(studentId)
+  saveClassConfigCache.delete(className)
+  saveGuardCache.delete(studentId)
 
   res.redirect("/admin?msg=" + encodeURIComponent("학생 정보를 수정했습니다."))
   } catch (err) {
