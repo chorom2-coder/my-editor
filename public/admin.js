@@ -61,6 +61,8 @@ async function refreshStudentListPanel(forceFull) {
   }
 }
 
+const NORMAL_STATUS_HTML = `<span class="badge badge-gray">정상</span>`
+
 function renderStatusCell(studentId, state) {
   const row = document.querySelector(`tr[data-student-id="${studentId}"]`)
   if (!row) return
@@ -87,7 +89,11 @@ function renderStatusCell(studentId, state) {
     return
   }
 
-  cell.innerHTML = `<span class="badge badge-gray">정상</span>`
+  cell.innerHTML = NORMAL_STATUS_HTML
+}
+
+function renderStudentRow(studentId, nextState) {
+  renderStatusCell(studentId, nextState)
 }
 
 function hookStatusForms() {
@@ -112,7 +118,7 @@ function hookStatusForms() {
     })
     const data = await res.json()
     if (!data.ok) return
-    renderStatusCell(data.studentId, {
+    renderStudentRow(data.studentId, {
       approvalRequested: data.approvalRequested === true,
       locked: data.locked === true
     })
@@ -125,7 +131,7 @@ function connectAdminEvents() {
     try {
       const payload = JSON.parse(e.data || "{}")
       if (!payload.studentId) return
-      renderStatusCell(payload.studentId, payload)
+      renderStudentRow(payload.studentId, payload)
     } catch (err) {
     }
   })
