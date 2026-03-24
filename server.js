@@ -440,6 +440,7 @@ function studentVisibleToAdmin(req, student, config) {
 }
 
 const liveStatusClients = new Map()
+const liveAdminClients = new Map()
 const saveGuardCache = new Map()
 const SAVE_GUARD_TTL_MS = 15000
 const SAVE_LOOKUP_TTL_MS = 5000
@@ -526,6 +527,24 @@ function pushRealtimeEvent(className, eventName, payload = {}) {
   }
 }
 
+function pushAdminEvent(eventName, payload = {}) {
+  for (const [clientId, client] of liveAdminClients.entries()) {
+    if (!client || !client.res) continue
+    try {
+      client.res.write(`event: ${eventName}\n`)
+      client.res.write(`data: ${JSON.stringify(payload)}\n\n`)
+    } catch (e) {
+      liveAdminClients.delete(clientId)
+    }
+  }
+}
+
+function wantsJson(req) {
+  const accept = String(req.get("accept") || "")
+  const xhr = String(req.get("x-requested-with") || "").toLowerCase()
+  return xhr === "xmlhttprequest" || accept.includes("application/json")
+}
+
 app.get("/events/student/:id", async (req, res) => {
   try {
     const studentId = String(req.params.id || "").trim()
@@ -570,6 +589,32 @@ app.get("/events/student/:id", async (req, res) => {
     console.error(err)
     res.status(500).end()
   }
+})
+
+app.get("/events/admin", requireAdmin, (req, res) => {
+  res.setHeader("Content-Type", "text/event-stream")
+  res.setHeader("Cache-Control", "no-cache, no-transform")
+  res.setHeader("Connection", "keep-alive")
+  res.flushHeaders?.()
+
+  const clientId = `admin:${req.session.adminId}:${Date.now()}:${Math.random().toString(36).slice(2)}`
+  liveAdminClients.set(clientId, { res, adminId: req.session.adminId, role: req.session.adminRole })
+
+  res.write("event: connected\n")
+  res.write(`data: ${JSON.stringify({ ok: true })}\n\n`)
+
+  const heartbeat = setInterval(() => {
+    try {
+      res.write(": heartbeat\n\n")
+    } catch (e) {
+      clearInterval(heartbeat)
+    }
+  }, 25000)
+
+  req.on("close", () => {
+    clearInterval(heartbeat)
+    liveAdminClients.delete(clientId)
+  })
 })
 
 app.get("/", (req, res) => {
@@ -1000,6 +1045,12 @@ app.post("/request-approval", async (req, res) => {
       console.error(updateError)
       return res.json({ ok: false })
     }
+
+    pushAdminEvent("student-status-changed", {
+      studentId: id,
+      approvalRequested: true,
+      locked: sub?.locked === true
+    })
 
     res.json({ ok: true })
   } catch (err) {
@@ -1690,7 +1741,7 @@ app.post("/unlock-student", requireAdmin, async (req, res) => {
 try {
 const studentId = req.body.studentId
 
-await supabase
+const { error: updateError } = await supabase
   .from("submissions")
   .update({
     locked: false,
@@ -1698,6 +1749,17 @@ await supabase
     approval_requested: false
   })
   .eq("student_id", studentId)
+if (updateError) throw updateError
+
+pushAdminEvent("student-status-changed", {
+  studentId,
+  approvalRequested: false,
+  locked: false
+})
+
+if (wantsJson(req)) {
+  return res.json({ ok: true, studentId, approvalRequested: false, locked: false })
+}
 
 res.redirect("/admin?msg=" + encodeURIComponent("입력 잠금을 해제했습니다."))
 
@@ -1711,7 +1773,7 @@ app.post("/approve-request", requireAdmin, async (req, res) => {
 try {
 const studentId = req.body.studentId
 
-await supabase
+const { error: updateError } = await supabase
   .from("submissions")
   .update({
     locked: false,
@@ -1719,6 +1781,17 @@ await supabase
     approval_requested: false
   })
   .eq("student_id", studentId)
+if (updateError) throw updateError
+
+pushAdminEvent("student-status-changed", {
+  studentId,
+  approvalRequested: false,
+  locked: false
+})
+
+if (wantsJson(req)) {
+  return res.json({ ok: true, studentId, approvalRequested: false, locked: false })
+}
 
 res.redirect("/admin?msg=" + encodeURIComponent("승인 요청을 처리했습니다."))
 
