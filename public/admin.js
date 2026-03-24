@@ -40,7 +40,13 @@ async function refreshStudentListPanel(forceFull) {
     if (forceFull) url.searchParams.set("loadFull", "1")
     url.searchParams.set("_ts", Date.now())
 
-    const res = await fetch(url.toString(), { cache: "no-store" })
+    const res = await fetch(url.toString(), {
+      cache: "no-store",
+      headers: {
+        "Cache-Control": "no-cache",
+        "Pragma": "no-cache"
+      }
+    })
     const html = await res.text()
 
     const doc = new DOMParser().parseFromString(html, "text/html")
@@ -61,7 +67,22 @@ async function refreshStudentListPanel(forceFull) {
   }
 }
 
-const NORMAL_STATUS_HTML = `<span class="badge badge-gray">정상</span>`
+const NORMAL_STATUS_HTML = `<button type="button" class="btn-light btn-sm" disabled>정상</button>`
+const studentStateList = []
+
+function setStudentState(studentId, nextState) {
+  const idx = studentStateList.findIndex(s => s.studentId === studentId)
+  const merged = {
+    studentId,
+    is_locked: nextState?.locked === true,
+    approvalRequested: nextState?.approvalRequested === true
+  }
+  if (idx >= 0) {
+    studentStateList[idx] = merged
+  } else {
+    studentStateList.push(merged)
+  }
+}
 
 function renderStatusCell(studentId, state) {
   const row = document.querySelector(`tr[data-student-id="${studentId}"]`)
@@ -69,9 +90,13 @@ function renderStatusCell(studentId, state) {
   const cell = row.querySelector(".student-status-cell")
   if (!cell) return
 
-  if (state.approvalRequested) {
+  const isLocked = state?.locked === true
+  const isApprovalRequested = state?.approvalRequested === true
+
+  // Style rule is unified here: only locked=true uses red button.
+  if (isLocked) {
     cell.innerHTML = `
-      <form method="POST" action="/approve-request" class="inline-mini-form js-student-status-form">
+      <form method="POST" action="/unlock-student" class="inline-mini-form js-student-status-form">
         <input type="hidden" name="studentId" value="${studentId}">
         <button type="submit" class="btn-danger btn-sm">입력 제한</button>
       </form>
@@ -79,11 +104,11 @@ function renderStatusCell(studentId, state) {
     return
   }
 
-  if (state.locked) {
+  if (isApprovalRequested) {
     cell.innerHTML = `
-      <form method="POST" action="/unlock-student" class="inline-mini-form js-student-status-form">
+      <form method="POST" action="/approve-request" class="inline-mini-form js-student-status-form">
         <input type="hidden" name="studentId" value="${studentId}">
-        <button type="submit" class="btn-danger btn-sm">입력 제한</button>
+        <button type="submit" class="btn-light btn-sm">정상</button>
       </form>
     `
     return
@@ -114,10 +139,24 @@ function hookStatusForms() {
     })
     const data = await res.json()
     if (!data.ok) return
-    renderStatusCell(data.studentId, {
+
+    const targetStudentId = data.studentId || String(formData.get("studentId") || "")
+    const row = document.querySelector(`tr[data-student-id="${targetStudentId}"]`)
+    const cell = row?.querySelector(".student-status-cell")
+    if (cell) {
+      // Force immediate visual rollback without waiting for DB re-fetch.
+      cell.innerHTML = NORMAL_STATUS_HTML
+    }
+
+    const nextState = {
       approvalRequested: data.approvalRequested === true,
       locked: data.locked === true
+    }
+    setStudentState(targetStudentId, {
+      approvalRequested: nextState.approvalRequested,
+      locked: nextState.locked
     })
+    renderStatusCell(targetStudentId, nextState)
   })
 }
 
@@ -127,6 +166,10 @@ function connectAdminEvents() {
     try {
       const payload = JSON.parse(e.data || "{}")
       if (!payload.studentId) return
+      setStudentState(payload.studentId, {
+        approvalRequested: payload.approvalRequested === true,
+        locked: payload.locked === true
+      })
       renderStatusCell(payload.studentId, payload)
     } catch (err) {
     }
