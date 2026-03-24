@@ -13,6 +13,7 @@ let isLocked = initialLocked === true
 let warnedOnce = false
 let warnedFive = false
 let warnedOne = false
+let currentEndTime = endTime
 
 function showModal(title, text, buttons) {
   modalTitle.innerText = title
@@ -196,6 +197,18 @@ async function pollStatus() {
   const data = await res.json()
   if (!data.ok) return
 
+  if (data.submitted === true) {
+    location.href = "/result/" + studentId
+    return
+  }
+
+  if (data.started !== true) {
+    location.href = "/waiting/" + studentId
+    return
+  }
+
+  if (data.endTime) currentEndTime = data.endTime
+
   if (data.locked !== isLocked) {
     isLocked = data.locked === true
     updateLockUI()
@@ -216,12 +229,12 @@ function tryFullscreen() {
 }
 
 function updateTimer() {
-  if (!endTime) {
+  if (!currentEndTime) {
     timeText.innerText = "--:--"
     return
   }
 
-  const remainMs = Math.max(0, endTime - Date.now())
+  const remainMs = Math.max(0, currentEndTime - Date.now())
   const totalSec = Math.floor(remainMs / 1000)
   const min = String(Math.floor(totalSec / 60)).padStart(2, "0")
   const sec = String(totalSec % 60).padStart(2, "0")
@@ -272,6 +285,12 @@ document.addEventListener("DOMContentLoaded", () => {
   tryFullscreen()
  document.addEventListener("click", tryFullscreen, { once: true })
 })
+
+const statusEvents = new EventSource("/events/student/" + studentId)
+statusEvents.addEventListener("class-status-changed", pollStatus)
+statusEvents.addEventListener("class-config-updated", pollStatus)
+statusEvents.addEventListener("connected", pollStatus)
+statusEvents.onerror = function () {}
 
 setInterval(autoSave, 60000)
 setInterval(pollStatus, 4000)

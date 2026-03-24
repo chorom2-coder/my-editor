@@ -16,6 +16,7 @@ app.set("views", path.join(__dirname, "views"))
 
 app.use(express.static("public"))
 app.use(bodyParser.urlencoded({ extended: true }))
+
 app.use(bodyParser.json())
 
 app.use(session({
@@ -125,15 +126,16 @@ async function writeJSON(file, data) {
       role: a.role || "prof"
     }))
 
-    const ids = rows.map(r => r.id).filter(Boolean)
-    if (ids.length > 0) {
-      const { error: deleteError } = await supabase
-        .from("admins")
-        .delete()
-        .not("id", "in", `(${ids.map(v => `"${String(v).replace(/"/g, '\\"')}"`).join(",")})`)
-      if (deleteError) throw deleteError
-    } else {
-      const { error: deleteError } = await supabase.from("admins").delete().neq("id", "__never__")
+    const { data: currentRows, error: currentError } = await supabase
+      .from("admins")
+      .select("id")
+    if (currentError) throw currentError
+    const currentIds = new Set((currentRows || []).map(r => r.id))
+    const nextIds = new Set(rows.map(r => r.id).filter(Boolean))
+    const toDelete = [...currentIds].filter(id => !nextIds.has(id))
+
+    if (toDelete.length > 0) {
+      const { error: deleteError } = await supabase.from("admins").delete().in("id", toDelete)
       if (deleteError) throw deleteError
     }
 
@@ -151,15 +153,16 @@ async function writeJSON(file, data) {
       class_name: s.class || "",
       owner_id: s.ownerId || ""
     }))
-    const ids = rows.map(r => r.student_id).filter(Boolean)
-    if (ids.length > 0) {
-      const { error: deleteError } = await supabase
-        .from("students")
-        .delete()
-        .not("student_id", "in", `(${ids.map(v => `"${String(v).replace(/"/g, '\\"')}"`).join(",")})`)
-      if (deleteError) throw deleteError
-    } else {
-      const { error: deleteError } = await supabase.from("students").delete().neq("student_id", "__never__")
+    const { data: currentRows, error: currentError } = await supabase
+      .from("students")
+      .select("student_id")
+    if (currentError) throw currentError
+    const currentIds = new Set((currentRows || []).map(r => r.student_id))
+    const nextIds = new Set(rows.map(r => r.student_id).filter(Boolean))
+    const toDelete = [...currentIds].filter(id => !nextIds.has(id))
+
+    if (toDelete.length > 0) {
+      const { error: deleteError } = await supabase.from("students").delete().in("student_id", toDelete)
       if (deleteError) throw deleteError
     }
 
@@ -190,13 +193,19 @@ async function writeJSON(file, data) {
       })
       const { error: upsertError } = await supabase.from("class_configs").upsert(rows, { onConflict: "class_name" })
       if (upsertError) throw upsertError
-      const { error: deleteError } = await supabase
+      const { data: currentRows, error: currentError } = await supabase
         .from("class_configs")
-        .delete()
-        .not("class_name", "in", `(${classNames.map(v => `"${String(v).replace(/"/g, '\\"')}"`).join(",")})`)
+        .select("class_name")
+      if (currentError) throw currentError
+      const currentNames = new Set((currentRows || []).map(r => r.class_name))
+      const nextNames = new Set(classNames)
+      const toDelete = [...currentNames].filter(name => !nextNames.has(name))
+      const { error: deleteError } = toDelete.length > 0
+        ? await supabase.from("class_configs").delete().in("class_name", toDelete)
+        : { error: null }
       if (deleteError) throw deleteError
     } else {
-      const { error: deleteError } = await supabase.from("class_configs").delete().neq("class_name", "__never__")
+      const { error: deleteError } = await supabase.from("class_configs").delete().not("class_name", "is", null)
       if (deleteError) throw deleteError
     }
     return
@@ -220,15 +229,15 @@ async function writeJSON(file, data) {
       with_space: Number(sub.withSpace || 0),
       without_space: Number(sub.withoutSpace || 0)
     }))
-    const ids = rows.map(r => r.student_id).filter(Boolean)
-    if (ids.length > 0) {
-      const { error: deleteError } = await supabase
-        .from("submissions")
-        .delete()
-        .not("student_id", "in", `(${ids.map(v => `"${String(v).replace(/"/g, '\\"')}"`).join(",")})`)
-      if (deleteError) throw deleteError
-    } else {
-      const { error: deleteError } = await supabase.from("submissions").delete().neq("student_id", "__never__")
+    const { data: currentRows, error: currentError } = await supabase
+      .from("submissions")
+      .select("student_id")
+    if (currentError) throw currentError
+    const currentIds = new Set((currentRows || []).map(r => r.student_id))
+    const nextIds = new Set(rows.map(r => r.student_id).filter(Boolean))
+    const toDelete = [...currentIds].filter(id => !nextIds.has(id))
+    if (toDelete.length > 0) {
+      const { error: deleteError } = await supabase.from("submissions").delete().in("student_id", toDelete)
       if (deleteError) throw deleteError
     }
 
@@ -429,6 +438,67 @@ function studentVisibleToAdmin(req, student, config) {
     student.ownerId === req.session.adminId
   )
 }
+
+const liveStatusClients = new Map()
+
+function pushRealtimeEvent(className, eventName, payload = {}) {
+  for (const [clientId, client] of liveStatusClients.entries()) {
+    if (!client || !client.res) continue
+    if (className && client.className !== className) continue
+    try {
+      client.res.write(`event: ${eventName}\n`)
+      client.res.write(`data: ${JSON.stringify(payload)}\n\n`)
+    } catch (e) {
+      liveStatusClients.delete(clientId)
+    }
+  }
+}
+
+app.get("/events/student/:id", async (req, res) => {
+  try {
+    const studentId = String(req.params.id || "").trim()
+    if (!studentId) return res.status(400).end()
+
+    const { data: student, error } = await supabase
+      .from("students")
+      .select("student_id, class_name")
+      .eq("student_id", studentId)
+      .maybeSingle()
+
+    if (error || !student) return res.status(404).end()
+
+    res.setHeader("Content-Type", "text/event-stream")
+    res.setHeader("Cache-Control", "no-cache, no-transform")
+    res.setHeader("Connection", "keep-alive")
+    res.flushHeaders?.()
+
+    const clientId = `${studentId}:${Date.now()}:${Math.random().toString(36).slice(2)}`
+    liveStatusClients.set(clientId, {
+      res,
+      className: student.class_name || "",
+      studentId
+    })
+
+    res.write("event: connected\n")
+    res.write(`data: ${JSON.stringify({ ok: true })}\n\n`)
+
+    const heartbeat = setInterval(() => {
+      try {
+        res.write(": heartbeat\n\n")
+      } catch (e) {
+        clearInterval(heartbeat)
+      }
+    }, 25000)
+
+    req.on("close", () => {
+      clearInterval(heartbeat)
+      liveStatusClients.delete(clientId)
+    })
+  } catch (err) {
+    console.error(err)
+    res.status(500).end()
+  }
+})
 
 app.get("/", (req, res) => {
   res.redirect("/login")
@@ -1182,17 +1252,25 @@ res.redirect("/admin?msg=" + encodeURIComponent("교수자 추가 중 오류가 
 app.post("/change-password", requireAdmin, async (req, res) => {
   try {
   const { currentPassword, newPassword } = req.body
-  const admins = await readJSON("admins.json")
+  const { data: target, error: findError } = await supabase
+    .from("admins")
+    .select("id,password")
+    .eq("id", req.session.adminId)
+    .maybeSingle()
 
-  const target = admins.find(a => a.id === req.session.adminId)
-  if (!target) return res.redirect("/admin?msg=" + encodeURIComponent("계정을 찾을 수 없습니다."))
+  if (findError || !target) return res.redirect("/admin?msg=" + encodeURIComponent("계정을 찾을 수 없습니다."))
 
   if (target.password !== currentPassword) {
     return res.redirect("/admin?msg=" + encodeURIComponent("현재 비밀번호가 다릅니다."))
   }
-
-  target.password = newPassword
-  await writeJSON("admins.json", admins)
+  const { error: updateError } = await supabase
+    .from("admins")
+    .update({ password: newPassword })
+    .eq("id", req.session.adminId)
+  if (updateError) {
+    console.error(updateError)
+    return res.redirect("/admin?msg=" + encodeURIComponent("비밀번호 변경 중 오류가 발생했습니다."))
+  }
   res.redirect("/admin?msg=" + encodeURIComponent("비밀번호를 변경했습니다."))
   } catch (err) {
     console.error(err)
@@ -1352,6 +1430,11 @@ if (error) {
   return res.redirect("/admin?msg=" + encodeURIComponent("분반 설정 저장 중 오류가 발생했습니다."))
 }
 
+pushRealtimeEvent(className, "class-config-updated", {
+  className,
+  started: currentConfig.started === true
+})
+
 await supabase
   .from("students")
   .update({ owner_id: finalOwnerId })
@@ -1396,6 +1479,11 @@ app.post("/startClass", requireAdmin, async (req, res) => {
       return res.redirect("/admin?msg=" + encodeURIComponent("분반 시작 중 오류가 발생했습니다."))
     }
 
+    pushRealtimeEvent(className, "class-status-changed", {
+      className,
+      started: true
+    })
+
     res.redirect(
       "/admin?manageClass=" +
         encodeURIComponent(className) +
@@ -1433,6 +1521,11 @@ app.post("/startClass", requireAdmin, async (req, res) => {
        console.error(error)
        return res.redirect("/admin?msg=" + encodeURIComponent("분반 종료 중 오류가 발생했습니다."))
      }
+
+    pushRealtimeEvent(className, "class-status-changed", {
+      className,
+      started: false
+    })
 
     res.redirect(
        "/admin?manageClass=" +
@@ -1885,11 +1978,15 @@ app.post("/delete-professor", requireAdmin, async (req, res) => {
     return res.redirect("/admin?msg=" + encodeURIComponent("교수자 ID가 없습니다."))
   }
 
-  const admins = await readJSON("admins.json")
-  const students = await readJSON("students.json")
-  const config = await readJSON("config.json")
-
-  const target = admins.find(a => a.id === id)
+  const { data: target, error: findError } = await supabase
+    .from("admins")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle()
+  if (findError) {
+    console.error(findError)
+    return res.redirect("/admin?msg=" + encodeURIComponent("교수자를 찾을 수 없습니다."))
+  }
   if (!target) {
     return res.redirect("/admin?msg=" + encodeURIComponent("교수자를 찾을 수 없습니다."))
   }
@@ -1898,25 +1995,18 @@ app.post("/delete-professor", requireAdmin, async (req, res) => {
     return res.redirect("/admin?msg=" + encodeURIComponent("초관리자 계정은 삭제할 수 없습니다."))
   }
 
-  const nextAdmins = admins.filter(a => a.id !== id)
-
-  students.forEach(s => {
-    if (String(s.ownerId || "") === id) {
-      s.ownerId = ""
-    }
-  })
-
-  if (config.classes) {
-    Object.keys(config.classes).forEach(cls => {
-      if (String(config.classes[cls].ownerId || "") === id) {
-        config.classes[cls].ownerId = ""
-      }
-    })
-  }
-
-  await writeJSON("admins.json", nextAdmins)
-  await writeJSON("students.json", students)
-  await writeJSON("config.json", config)
+  const { error: deleteError } = await supabase.from("admins").delete().eq("id", id)
+  if (deleteError) throw deleteError
+  const { error: studentOwnerClearError } = await supabase
+    .from("students")
+    .update({ owner_id: "" })
+    .eq("owner_id", id)
+  if (studentOwnerClearError) throw studentOwnerClearError
+  const { error: classOwnerClearError } = await supabase
+    .from("class_configs")
+    .update({ owner_id: "" })
+    .eq("owner_id", id)
+  if (classOwnerClearError) throw classOwnerClearError
 
   res.redirect("/admin?msg=" + encodeURIComponent("교수자를 삭제했습니다."))
   } catch (err) {
@@ -1986,27 +2076,37 @@ app.post("/update-student", requireAdmin, async (req, res) => {
   try {
   const { name, studentId, className, ownerId } = req.body
 
-  const students = await readJSON("students.json")
-
-  const student = students.find(s => s.studentId === studentId)
+  const { data: student, error: studentError } = await supabase
+    .from("students")
+    .select("*")
+    .eq("student_id", studentId)
+    .maybeSingle()
+  if (studentError) throw studentError
   if (!student) {
     return res.redirect("/admin")
   }
 
   if (req.session.adminRole !== "super") {
-    if (String(student.ownerId || "") !== req.session.adminId) {
+    if (String(student.owner_id || "") !== req.session.adminId) {
       return res.redirect("/admin")
     }
   }
 
-  student.name = name
-  student.class = className
-
-  if (req.session.adminRole === "super") {
-    student.ownerId = ownerId || ""
+  const payload = {
+    name,
+    class_name: className
   }
+  if (req.session.adminRole === "super") payload.owner_id = ownerId || ""
 
-  await writeJSON("students.json", students)
+  const { error: updateError } = await supabase
+    .from("students")
+    .update(payload)
+    .eq("student_id", studentId)
+  if (updateError) throw updateError
+  await supabase
+    .from("submissions")
+    .update({ name, class_name: className })
+    .eq("student_id", studentId)
 
   res.redirect("/admin?msg=" + encodeURIComponent("학생 정보를 수정했습니다."))
   } catch (err) {

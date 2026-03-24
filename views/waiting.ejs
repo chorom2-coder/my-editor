@@ -16,7 +16,7 @@
 <script>
 const studentId = "<%= studentId %>"
 
-setInterval(async function(){
+async function checkStatusNow() {
   const res = await fetch("/status/" + studentId)
   const data = await res.json()
 
@@ -29,7 +29,16 @@ setInterval(async function(){
       location.href = "/write/" + studentId
     }
   }
-}, 3000)
+}
+
+const statusEvents = new EventSource("/events/student/" + studentId)
+statusEvents.addEventListener("class-status-changed", checkStatusNow)
+statusEvents.addEventListener("class-config-updated", checkStatusNow)
+statusEvents.addEventListener("connected", checkStatusNow)
+statusEvents.onerror = function () {}
+
+setInterval(checkStatusNow, 3000)
+checkStatusNow()
 </script>
 </body>
 </html>
