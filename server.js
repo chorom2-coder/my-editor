@@ -640,8 +640,11 @@ app.post("/login", async (req, res) => {
       .eq("name", name)
       .eq("student_id", id)
       .maybeSingle()
+if (error) {
+  return res.send("서버가 잠시 비활성 상태입니다. 잠시 후 다시 시도해주세요.")
+}
 
-    if (error || !data) {
+if (!data) {
       return res.send("학생 정보가 없습니다. 이름과 학번을 다시 확인하세요.")
     }
 
