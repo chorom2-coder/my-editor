@@ -120,7 +120,7 @@
           </thead>
           <tbody>
             <% professorSummaries.forEach(function(prof){ %>
-              <tr data-student-id="<%= student.studentId %>">
+              <tr data-student-id="<%= prof.Id %>">
                 <td class="student-name"><%= prof.name %></td>
                 <td><%= prof.id %></td>
                 <td><%= prof.classNames.length ? prof.classNames.join(", ") : "-" %></td>
