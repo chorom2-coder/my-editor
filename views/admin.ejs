@@ -389,15 +389,17 @@
                 </td>
 
                 <td class="student-status-cell">
-                  <% if (sub.approvalRequested) { %>
-                    <form method="POST" action="/approve-request" class="inline-mini-form js-student-status-form">
-                      <input type="hidden" name="studentId" value="<%= student.studentId %>">
-                      <button type="submit" class="btn-light btn-sm">정상</button>
-                    </form>
-                  <% } else if (sub.locked) { %>
+
+                  <% if (sub.locked) { %>
                     <form method="POST" action="/unlock-student" class="inline-mini-form js-student-status-form">
                       <input type="hidden" name="studentId" value="<%= student.studentId %>">
                       <button type="submit" class="btn-danger btn-sm">입력 제한</button>
+                    </form>
+
+                  <% } else if (sub.approvalRequested) { %>
+                    <form method="POST" action="/approve-request" class="inline-mini-form js-student-status-form">
+                      <input type="hidden" name="studentId" value="<%= student.studentId %>">
+                      <button type="submit" class="btn-light btn-sm">정상</button>
                     </form>
                   <% } else { %>
                     <button type="button" class="btn-light btn-sm" disabled>정상</button>

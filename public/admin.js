@@ -236,3 +236,21 @@ window.addEventListener("load", function () {
     }
   }
 })
+document.querySelectorAll('.js-student-status-form').forEach(form => {
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault()
+
+    await fetch(form.action, {
+      method: 'POST',
+      body: new FormData(form)
+    })
+
+    location.reload()
+  })
+})
+window.addEventListener('student-status-changed', () => {
+  location.reload()
+})
+setInterval(() => {
+  location.reload()
+}, 5000)

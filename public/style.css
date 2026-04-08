@@ -1051,3 +1051,78 @@ display:flex;
 .btn-danger:hover{
   background:#f9d6d2;
 }
+select.badge-red {
+  background-color: red;
+  color: white;
+  border: none;
+}
+.student-status-cell .btn-light.btn-sm {
+  background-color: #ccc;
+  color: black;
+  border-radius: 6px;
+}
+
+.student-status-cell .btn-danger.btn-sm {
+  background-color: red;
+  color: white;
+  border-radius: 6px;
+}
+.student-status-cell .btn-light.btn-sm {
+  background-color: #ddd;
+  color: black;
+  border: none;
+  border-radius: 999px;
+  padding: 4px 10px;
+}
+
+.student-status-cell .btn-danger.btn-sm {
+  background-color: red;
+  color: white;
+  border: none;
+  border-radius: 999px;
+  padding: 4px 10px;
+}
+.student-status-cell .btn-danger.btn-sm {
+  background-color: #e74c3c; /* 덜 진한 빨강 */
+  color: white;
+  font-size: 12px; /* 제출완료랑 맞춤 */
+  font-weight: normal;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: none;
+}
+.student-status-cell .btn-light.btn-sm,
+.student-status-cell .btn-danger.btn-sm {
+  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: none;
+}
+
+/* 정상 (회색) */
+.student-status-cell .btn-light.btn-sm {
+ 
+.student-status-cell .btn-danger.btn-sm {
+  background-color: #fdecea !important;
+  color: #e74c3c !important;
+  border: none !important;
+  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: 999px;
+}
+.student-status-cell .btn-light.btn-sm {
+  background-color: #eee !important;
+  color: #333 !important;
+  border: none !important;
+  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: 999px;
+}
+.student-status-cell .btn-danger.btn-sm {
+  background-color: #fde8e8 !important;
+  color: #dc2626 !important;
+  border: none !important;
+  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: 999px;
+}
