@@ -1103,8 +1103,14 @@ const { data: admin, error } = await supabase
   .eq("id", id)
   .eq("password", password)
   .maybeSingle()
+ // ✅ DB 자체 문제 (꺼짐 / 연결 실패)
+    if (error) {
+      console.error("Supabase error:", error)
+      return res.send("서버가 잠시 비활성 상태입니다. 잠시 후 다시 시도해주세요.")
+    }
 
-if (error || !admin) {
+    // ✅ 로그인 정보 틀림
+if (!admin) {
   return res.send("관리자 로그인 실패. 아이디와 비밀번호를 확인하세요.")
 }
 
