@@ -137,15 +137,22 @@ async function reallySubmit() {
 
   const content = editor.value
 
-  const blob = new Blob([content], { type: "text/plain" })
-  const a = document.createElement("a")
-  a.href = URL.createObjectURL(blob)
-
-  const now = new Date()
+const now = new Date()
 
   const dateStr = now.getFullYear() + "-"
-  + String(now.getMonth() + 1).padStart(2, "0") + "-"
-  + String(now.getDate()).padStart(2, "0")
+    + String(now.getMonth() + 1).padStart(2, "0") + "-"
+    + String(now.getDate()).padStart(2, "0")
+
+  const fullContent =
+`${topic}
+${studentName} | ${dateStr}
+----------------------
+
+${content}`
+
+  const blob = new Blob([fullContent], { type: "text/plain" })
+  const a = document.createElement("a")
+  a.href = URL.createObjectURL(blob)
 
   const safeTopic = topic.replace(/[\\/:*?"<>|]/g, "")
   const safeName = studentName.replace(/[\\/:*?"<>|]/g, "")
