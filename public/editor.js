@@ -132,7 +132,9 @@ function submitWriting() {
   ])
 }
 
-async function reallySubmit() {
+
+
+async function reallySubmit() { // <--여기부터시작
   closeModal()
 
   const content = editor.value
@@ -146,7 +148,7 @@ const now = new Date()
   const fullContent =
 `${topic}
 ${studentName} | ${dateStr}
-----------------------
+
 
 ${content}`
 
@@ -197,20 +199,32 @@ ${content}`
   }, 2200)
 }
 
+
+
 function downloadTxt() {
   const content = editor.value
 
   const now = new Date()
-  const dateStr = now.toISOString().slice(0, 10)
+  const dateStr = now.getFullYear() + "-"
+    + String(now.getMonth() + 1).padStart(2, "0") + "-"
+    + String(now.getDate()).padStart(2, "0")
+
+  // ✅ 교수자용과 동일하게 주제, 이름, 날짜 정보를 추가합니다.
+  const fullContent = `${topic}\n${studentName} | ${dateStr}\n----------------------\n\n${content}`
 
   const filename = `${topic}_${studentName}_${dateStr}.txt`
 
-  const blob = new Blob([content], { type: "text/plain" })
+  // ✅ content 대신 정보가 포함된 fullContent를 Blob으로 만듭니다.
+  const blob = new Blob([fullContent], { type: "text/plain" })
   const a = document.createElement("a")
   a.href = URL.createObjectURL(blob)
   a.download = filename
   a.click()
+  URL.revokeObjectURL(a.href) // 메모리 정리
 }
+
+
+
 
 async function sendWarn() {
   const res = await fetch("/warn", {
