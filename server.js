@@ -1,3 +1,8 @@
+require('dotenv').config({ path: __dirname + '/.env' })
+
+
+
+
 require("dotenv").config()
 
 const express = require("express")
@@ -975,7 +980,26 @@ const classConfig = await getClassConfigFromDb(student.class_name)
 
     saveGuardCache.delete(studentId)
 
-    return res.json({ ok: true })
+
+
+// --- 여기부터 삽입 ---
+    if (req.session) {
+      req.session.destroy((err) => {
+        if (err) {
+          console.error("세션 삭제 오류:", err);
+          return res.json({ ok: false, msg: "로그아웃 처리 중 오류" });
+        }
+        res.clearCookie('connect.sid'); // 세션 쿠키 삭제 (설정에 따라 이름이 다를 수 있음)
+        return res.json({ ok: true });
+      });
+    } else {
+      return res.json({ ok: true });
+    }
+    // --- 여기까지 삽입 ---
+
+
+
+    
   } catch (err) {
     console.error(err)
     res.json({ ok: false, msg: "제출 중 오류가 발생했습니다." })
