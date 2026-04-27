@@ -135,6 +135,27 @@ function submitWriting() {
 async function reallySubmit() {
   closeModal()
 
+  const content = editor.value
+
+  const blob = new Blob([content], { type: "text/plain" })
+  const a = document.createElement("a")
+  a.href = URL.createObjectURL(blob)
+
+  const now = new Date()
+
+  const dateStr = now.getFullYear() + "-"
+  + String(now.getMonth() + 1).padStart(2, "0") + "-"
+  + String(now.getDate()).padStart(2, "0")
+
+  const safeTopic = topic.replace(/[\\/:*?"<>|]/g, "")
+  const safeName = studentName.replace(/[\\/:*?"<>|]/g, "")
+
+  const fileName = `${safeTopic}_${safeName}_${dateStr}.txt`
+
+  a.download = fileName
+
+  a.click()
+
   const res = await fetch("/submit", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -167,6 +188,21 @@ async function reallySubmit() {
   setTimeout(() => {
     location.href = "/student-logout"
   }, 2200)
+}
+
+function downloadTxt() {
+  const content = editor.value
+
+  const now = new Date()
+  const dateStr = now.toISOString().slice(0, 10)
+
+  const filename = `${topic}_${studentName}_${dateStr}.txt`
+
+  const blob = new Blob([content], { type: "text/plain" })
+  const a = document.createElement("a")
+  a.href = URL.createObjectURL(blob)
+  a.download = filename
+  a.click()
 }
 
 async function sendWarn() {

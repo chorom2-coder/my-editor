@@ -51,6 +51,7 @@
 
     <div class="action-row" style="margin-top:16px;">
       <button type="button" class="btn-outline" onclick="manualSave()">임시저장</button>
+      <button type="button" class="btn-outline" onclick="downloadTxt()">다운로드(txt)</button>
       <button type="button" class="btn-main" onclick="submitWriting()">제출</button>
     </div>
   </div>
@@ -67,6 +68,10 @@
 
 <script>
 const studentId = "<%= id %>"
+
+const studentName = "<%= studentName %>"   
+const topic = "<%= topic %>"              
+
 const minChars = <%= minChars %>
 const initialLocked = <%= locked ? "true" : "false" %>
 const endTime = <%= endTime ? endTime : "null" %>
