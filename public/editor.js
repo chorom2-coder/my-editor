@@ -182,6 +182,8 @@ ${content}`
     ])
     return
   }
+// 브라우저에 남은 데이터 정리
+  localStorage.clear();
 
   showModal("제출 완료", "제출이 완료되었습니다. 잠시 후 자동 로그아웃됩니다.", [
     {
@@ -193,9 +195,9 @@ ${content}`
       }
     }
   ])
-
+// 사용자가 확인 버튼을 안 눌러도 2.2초 뒤 자동 이동
   setTimeout(() => {
-    location.href = "/student-logout"
+    location.href = "/"
   }, 2200)
 }
 
