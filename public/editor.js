@@ -9,7 +9,7 @@ const modalTitle = document.getElementById("modalTitle")
 const modalText = document.getElementById("modalText")
 const modalActions = document.getElementById("modalActions")
 
-let isLocked = initialLocked === true
+let isLocked = false;
 let warnedOnce = false
 let warnedFive = false
 let warnedOne = false

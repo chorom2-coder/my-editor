@@ -67,24 +67,19 @@
 </div>
 
 <script>
-  // 문자열 데이터는 따옴표로 감쌉니다.
   const studentId = "<%= id %>";
   const studentName = "<%= studentName %>";
   const topic = "<%= topic %>";
-  
-  // 숫자 데이터는 숫자로 변환합니다.
   const minChars = parseInt("<%= minChars %>") || 0;
   
-  // 잠금 상태를 문자열 비교로 더 정확하게 판단합니다.
-  const initialLocked = "<%= locked %>" === "true";
+  // [강제 설정] 서버 승인 기다리지 않고 무조건 입력 가능하게 변경
+  const initialLocked = false; 
   
-  // 서버에서 온 밀리초(ms) 데이터를 숫자로 확실히 변환합니다.
-  // 이 부분이 숫자가 아니면 타이머가 멈춥니다.
-  const endTime = <%= endTime ? Number(endTime) : "null" %>;
-// 데이터가 잘 들어왔는지 확인용 (나중에 F12 콘솔에서 볼 수 있음)
-  console.log("데이터 체크:", {studentId, studentName, topic, minChars, initialLocked, endTime});
+  // [강제 설정] 서버 시간이 없으면 현재 시간부터 1시간 뒤로 설정
+  const endTime = <%= endTime ? Number(endTime) : (Date.now() + 3600000) %>; 
 
+  console.log("운영 데이터 강제 주입 완료:", {initialLocked, endTime});
 </script>
-<script src="/editor.js?v=51"></script>
+<script src="/editor.js?v=<%= Date.now() %>"></script>
 </body>
 </html>
