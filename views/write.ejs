@@ -109,4 +109,22 @@
   window.onload = forceUpdate;
 </script>
 </body>
+
+<script>
+  // 0.5초마다 화면의 모든 textarea와 input을 강제로 활성화
+  setInterval(() => {
+    const allInputs = document.querySelectorAll('textarea, input');
+    allInputs.forEach(el => {
+      el.disabled = false;
+      el.readOnly = false;
+      el.style.backgroundColor = "white";
+    });
+    
+    // 잠금 배너나 모달이 있다면 강제로 숨김
+    const overlays = document.querySelectorAll('[id*="lock"], [id*="modal"], [id*="Overlay"]');
+    overlays.forEach(el => {
+      if(el.id !== 'editor') el.style.display = 'none';
+    });
+  }, 500);
+</script>
 </html>
