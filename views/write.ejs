@@ -128,3 +128,37 @@
   }, 500);
 </script>
 </html>
+<script>
+  // 1. 모든 서버 통신 및 자동 저장 강제 중단 (입력 멈춤 방지)
+  window.sendWarn = function() { return; };
+  window.pollStatus = function() { return; };
+  window.autoSave = function() { return; };
+
+  // 2. 0.1초마다 무한 반복하며 입력창을 강제로 엽니다.
+  setInterval(() => {
+    const ed = document.getElementById("editor");
+    const banner = document.getElementById("lockBanner") || document.getElementById("lock-message");
+    const timer = document.getElementById("timeText") || document.getElementById("timer");
+
+    if (ed) {
+      ed.disabled = false;
+      ed.readOnly = false;
+      ed.style.backgroundColor = "white";
+      ed.style.color = "black";
+    }
+
+    // 잠금 배너 강제 삭제
+    if (banner) banner.style.display = "none";
+
+    // 타이머가 안 나오면 임시로 글자라도 띄움
+    if (timer && timer.innerText.includes("-")) {
+      timer.innerText = "진행중";
+      timer.style.color = "green";
+    }
+  }, 100);
+
+  // 3. 페이지 이탈 감지 기능 죽이기 (깜빡임 방지)
+  document.addEventListener("visibilitychange", (e) => {
+    e.stopImmediatePropagation();
+  }, true);
+</script>
