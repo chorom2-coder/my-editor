@@ -67,19 +67,42 @@
 </div>
 
 <script>
-  const studentId = "<%= id %>";
-  const studentName = "<%= studentName %>";
-  const topic = "<%= topic %>";
-  const minChars = parseInt("<%= minChars %>") || 0;
-  
-  // [강제 설정] 서버 승인 기다리지 않고 무조건 입력 가능하게 변경
-  const initialLocked = false; 
-  
-  // [강제 설정] 서버 시간이 없으면 현재 시간부터 1시간 뒤로 설정
-  const endTime = <%= endTime ? Number(endTime) : (Date.now() + 3600000) %>; 
+  // 1. 서버 데이터 주입 (변수명 오타 방지를 위해 새로 정의)
+  const s_Id = "<%= id %>";
+  const e_Time = <%= endTime ? Number(endTime) : (Date.now() + 3600000) %>;
+  let is_Locked = false; // 일단 무조건 열기
 
-  console.log("운영 데이터 강제 주입 완료:", {initialLocked, endTime});
+  // 2. 화면 요소 가져오기
+  const el_Editor = document.getElementById("editor");
+  const el_Timer = document.getElementById("timeText") || document.getElementById("timer");
+  const el_Banner = document.getElementById("lockBanner");
+
+  // 3. 1초마다 강제로 화면 갱신하는 함수
+  function forceUpdate() {
+    // 타이머 계산
+    const now = Date.now();
+    const diff = e_Time - now;
+
+    if (diff <= 0) {
+      if (el_Timer) el_Timer.innerText = "00:00";
+      if (el_Editor) el_Editor.disabled = true;
+    } else {
+      const m = String(Math.floor(diff / 60000)).padStart(2, "0");
+      const s = String(Math.floor((diff % 60000) / 1000)).padStart(2, "0");
+      if (el_Timer) el_Timer.innerText = m + ":" + s;
+      
+      // 입력창 강제 활성화 (교수님이 승인했으므로 무조건 활성화)
+      if (el_Editor) {
+        el_Editor.disabled = false;
+        el_Editor.readOnly = false;
+      }
+      if (el_Banner) el_Banner.style.display = "none";
+    }
+  }
+
+  // 4. 실행
+  setInterval(forceUpdate, 1000);
+  window.onload = forceUpdate;
 </script>
-<script src="/editor.js?v=<%= Date.now() %>"></script>
 </body>
 </html>
