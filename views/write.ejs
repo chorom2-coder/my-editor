@@ -67,15 +67,21 @@
 </div>
 
 <script>
-const studentId = "<%= id %>"
-
-const studentName = "<%= studentName %>"   
-const topic = "<%= topic %>"              
-
-const minChars = <%= minChars %>
-const initialLocked = <%= locked ? "true" : "false" %>
-const endTime = <%= endTime ? endTime : "null" %>
+  // 문자열 데이터는 따옴표로 감쌉니다.
+  const studentId = "<%= id %>";
+  const studentName = "<%= studentName %>";
+  const topic = "<%= topic %>";
+  
+  // 숫자 데이터는 숫자로 변환합니다.
+  const minChars = parseInt("<%= minChars %>") || 0;
+  
+  // 잠금 상태를 문자열 비교로 더 정확하게 판단합니다.
+  const initialLocked = "<%= locked %>" === "true";
+  
+  // 서버에서 온 밀리초(ms) 데이터를 숫자로 확실히 변환합니다.
+  // 이 부분이 숫자가 아니면 타이머가 멈춥니다.
+  const endTime = <%= endTime ? Number(endTime) : "null" %>;
 </script>
-<script src="/editor.js?v=50"></script>
+<script src="/editor.js?v=51"></script>
 </body>
 </html>
