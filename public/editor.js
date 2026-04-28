@@ -191,7 +191,7 @@ ${content}`
       className: "btn-main",
       onClick: () => {
         closeModal()
-        location.href = "/student-logout"
+        location.href = "/"
       }
     }
   ])
@@ -372,7 +372,7 @@ document.addEventListener("DOMContentLoaded", () => {
   updateCount()
   updateLockUI()
   updateTimer()
-  tryFullscreen()
+ // tryFullscreen()
  document.addEventListener("click", tryFullscreen, { once: true })
 })
 
