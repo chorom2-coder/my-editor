@@ -1,32 +1,36 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>글 작성</title>
-  <link rel="stylesheet" href="/style.css?v=50">
+  <link rel="stylesheet" href="/style.css?v=70">
 </head>
+
 <body class="app-page">
 <div class="app-shell">
 
+  <!-- 상단 정보 -->
   <div class="top-card">
     <div class="writer-card-grid">
       <div>
         <div class="small-label">작성자</div>
         <h1 class="page-title"><%= studentName %></h1>
-        <div class="meta-line"><%= studentClass ? "분반: " + studentClass : "" %></div>
+        <div class="meta-line">
+          <%= studentClass ? "분반: " + studentClass : "" %>
+        </div>
       </div>
 
       <div class="writer-notice">
         <h3>유의사항</h3>
         <p>
-          • 복사 및 붙여넣기 불가 / • 화면 이탈 시 입력 불가 / • 교수자 승인 후 작성 가능
+          • 복사 및 붙여넣기 불가 / • 화면 이탈 시 입력 제한 / • 교수자 승인 후 작성
         </p>
       </div>
     </div>
   </div>
 
+  <!-- 글쓰기 영역 -->
   <div class="panel-card">
     <h2 class="section-title">주제</h2>
     <div class="topic-box"><%= topic %></div>
@@ -43,12 +47,15 @@
       </div>
     </div>
 
+    <!-- 잠금 배너 -->
     <div id="lockBanner" class="lock-banner" style="display:none;">
       입력창이 차단되었습니다. 교수자 승인 후 다시 작성할 수 있습니다.
     </div>
 
+    <!-- 입력창 -->
     <textarea id="editor"><%= text || "" %></textarea>
 
+    <!-- 버튼 -->
     <div class="action-row" style="margin-top:16px;">
       <button type="button" class="btn-outline" onclick="manualSave()">임시저장</button>
       <button type="button" class="btn-outline" onclick="downloadTxt()">다운로드(txt)</button>
@@ -58,6 +65,7 @@
 
 </div>
 
+<!-- 모달 -->
 <div id="modalOverlay" class="modal-overlay" style="display:none;">
   <div class="modal-box">
     <div class="modal-title" id="modalTitle"></div>
@@ -66,102 +74,18 @@
   </div>
 </div>
 
+<!-- 🔥 서버 데이터 (필수) -->
 <script>
-  // 1. 서버 데이터 주입 (변수명 꼬임 방지를 위해 새로 정의)
-  const _sId = "<%= id %>";
-  const _endTime = <%= endTime ? Number(endTime) : (Date.now() + 3600000) %>;
-  
-  // 2. 화면 요소 강제 매칭
-  const _editor = document.getElementById("editor");
-  const _timer = document.getElementById("timeText") || document.getElementById("timer");
-  const _banner = document.getElementById("lockBanner");
-
-  function forceUpdate() {
-    const now = Date.now();
-    const diff = _endTime - now;
-
-    // 타이머 그리기
-    if (_timer) {
-      if (diff <= 0) {
-        _timer.innerText = "00:00";
-        if (_editor) _editor.disabled = true;
-      } else {
-        const m = String(Math.floor(diff / 60000)).padStart(2, "0");
-        const s = String(Math.floor((diff % 60000) / 1000)).padStart(2, "0");
-        _timer.innerText = m + ":" + s;
-      }
-    }
-
-    // ★ 핵심: 입력창 무조건 열기 (교수자 승인 상태와 무관하게 일단 엽니다)
-    if (_editor && diff > 0) {
-        _editor.disabled = false;
-        _editor.readOnly = false;
-        _editor.style.backgroundColor = "#fff"; // 배경색도 흰색으로 강제
-    }
-    
-    // 배너 숨기기
-    if (_banner) _banner.style.display = "none";
-  }
-
-  // 1초마다 무한 반복
-  setInterval(forceUpdate, 1000);
-  // 로드 즉시 실행
-  window.onload = forceUpdate;
+  const studentId = "<%= id %>"
+  const studentName = "<%= studentName %>"
+  const topic = "<%= topic %>"
+  const minChars = <%= minChars %>
+  const initialLocked = <%= locked ? "true" : "false" %>
+  const endTime = <%= endTime ? Number(endTime) : "null" %>
 </script>
+
+<!-- 🔥 핵심 JS -->
+<script src="/editor.js?v=999"></script>
+
 </body>
-
-<script>
-  // 0.5초마다 화면의 모든 textarea와 input을 강제로 활성화
-  setInterval(() => {
-    const allInputs = document.querySelectorAll('textarea, input');
-    allInputs.forEach(el => {
-      el.disabled = false;
-      el.readOnly = false;
-      el.style.backgroundColor = "white";
-    });
-    
-    // 잠금 배너나 모달이 있다면 강제로 숨김
-    const overlays = document.querySelectorAll('[id*="lock"], [id*="modal"], [id*="Overlay"]');
-    overlays.forEach(el => {
-      if(el.id !== 'editor') el.style.display = 'none';
-    });
-  }, 500);
-</script>
 </html>
-<script>
-  // 1. 기존 모든 통신/감시 함수 파괴
-  window.sendWarn = function() {};
-  window.pollStatus = function() {};
-  window.autoSave = function() {};
-  
-  // 2. 입력창 속성 강제 고정 (공격적인 방식)
-  function rescueEditor() {
-    const ed = document.getElementById("editor");
-    if (ed) {
-      // 속성 자체를 제거
-      ed.removeAttribute('disabled');
-      ed.removeAttribute('readonly');
-      // 자바스크립트가 다시 잠그지 못하게 막음
-      ed.disabled = false;
-      ed.readOnly = false;
-      // 시각적 피드백
-      ed.style.backgroundColor = "#ffffff";
-      ed.style.pointerEvents = "auto";
-    }
-    
-    // 잠금 메시지/배너 무조건 숨김
-    const banner = document.getElementById("lockBanner") || document.getElementById("lock-message");
-    if (banner) banner.style.display = "none";
-  }
-
-  // 3. 0.03초마다(초고속) 실행하여 다른 코드가 잠글 틈을 안 줌
-  setInterval(rescueEditor, 30);
-  
-  // 4. 글자수 체크 (에러 방지용 안전 장치 포함)
-  document.addEventListener('input', function(e) {
-    if (e.target.id === 'editor') {
-      const ws = document.getElementById("withSpace");
-      if (ws) ws.innerText = e.target.value.length;
-    }
-  }, true);
-</script>
