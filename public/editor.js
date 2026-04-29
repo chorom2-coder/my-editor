@@ -1,60 +1,269 @@
-// 1. 필요한 요소들을 안전하게 가져오기
-const editor = document.getElementById("editor");
-// ID가 timeText인지 timer인지 확실하지 않으므로 둘 다 체크합니다.
-const timeDisplay = document.getElementById("timeText") || document.getElementById("timer") || document.getElementById("time-display");
-const lockBanner = document.getElementById("lockBanner") || document.getElementById("lock-message");
+// ================================
+// 0. DOM 요소
+// ================================
+const editor = document.getElementById("editor")
+const withSpace = document.getElementById("withSpace")
+const withoutSpace = document.getElementById("withoutSpace")
+const lockBanner = document.getElementById("lockBanner")
+const timeText = document.getElementById("timeText")
 
-// 2. 변수 초기화 (서버 데이터 우선, 없으면 기본값)
-let isLocked = (typeof initialLocked !== 'undefined') ? initialLocked : false;
-let currentEndTime = (typeof endTime !== 'undefined') ? Number(endTime) : null;
+const modalOverlay = document.getElementById("modalOverlay")
+const modalTitle = document.getElementById("modalTitle")
+const modalText = document.getElementById("modalText")
+const modalActions = document.getElementById("modalActions")
 
-// 3. 타이머 및 잠금 UI 통합 업데이트 함수
+// ================================
+// 1. 상태값 (안전 초기화)
+// ================================
+let isLocked = (typeof initialLocked !== "undefined") ? initialLocked === true : false
+let currentEndTime = (typeof endTime !== "undefined") ? Number(endTime) : null
+
+let warnedOnce = false
+let warnedFive = false
+let warnedOne = false
+
+let lastSavedText = editor ? editor.value : ""
+let autoSaveInFlight = false
+let autoSaveQueued = false
+
+// ================================
+// 2. 모달
+// ================================
+function showModal(title, text, buttons) {
+  modalTitle.innerText = title
+  modalText.innerText = text
+  modalActions.innerHTML = ""
+
+  buttons.forEach(btn => {
+    const button = document.createElement("button")
+    button.type = "button"
+    button.className = btn.className || "btn-main"
+    button.innerText = btn.label
+    button.onclick = btn.onClick
+    modalActions.appendChild(button)
+  })
+
+  modalOverlay.style.display = "flex"
+}
+
+function closeModal() {
+  modalOverlay.style.display = "none"
+}
+
+// ================================
+// 3. 글자수
+// ================================
+function updateCount() {
+  if (!editor) return
+  const text = editor.value
+  if (withSpace) withSpace.innerText = text.length
+  if (withoutSpace) withoutSpace.innerText = text.replace(/\s/g, "").length
+}
+
+// ================================
+// 4. UI 업데이트 (타이머 + 잠금)
+// ================================
 function refreshApp() {
-    // [잠금 처리]
-    if (editor) {
-        // 교수자가 승인했으면(isLocked가 false면) disabled를 풉니다.
-        editor.disabled = isLocked;
-        if (lockBanner) lockBanner.style.display = isLocked ? "block" : "none";
-    }
+  if (editor) {
+    editor.disabled = isLocked
+    if (lockBanner) lockBanner.style.display = isLocked ? "block" : "none"
+  }
 
-    // [타이머 처리]
-    if (timeDisplay && currentEndTime) {
-        const remainMs = currentEndTime - Date.now();
-        if (remainMs <= 0) {
-            timeDisplay.innerText = "00:00";
-            if (editor) editor.disabled = true;
-        } else {
-            const totalSec = Math.floor(remainMs / 1000);
-            const min = String(Math.floor(totalSec / 60)).padStart(2, "0");
-            const sec = String(totalSec % 60).padStart(2, "0");
-            timeDisplay.innerText = `${min}:${sec}`;
-        }
+  if (timeText && currentEndTime) {
+    const remainMs = currentEndTime - Date.now()
+
+    if (remainMs <= 0) {
+      timeText.innerText = "00:00"
+      if (editor) editor.disabled = true
+    } else {
+      const totalSec = Math.floor(remainMs / 1000)
+      const min = String(Math.floor(totalSec / 60)).padStart(2, "0")
+      const sec = String(totalSec % 60).padStart(2, "0")
+      timeText.innerText = `${min}:${sec}`
+
+      if (totalSec <= 300 && totalSec > 60 && !warnedFive) {
+        warnedFive = true
+        showModal("시간 안내", "5분 남았습니다.", [{ label: "확인", onClick: closeModal }])
+      }
+
+      if (totalSec <= 60 && totalSec > 0 && !warnedOne) {
+        warnedOne = true
+        showModal("시간 안내", "1분 남았습니다.", [{ label: "확인", onClick: closeModal }])
+      }
     }
+  }
 }
 
-// 4. 서버 상태 실시간 확인 (폴링)
+// ================================
+// 5. 서버 상태 동기화
+// ================================
 async function syncStatus() {
-    try {
-        const res = await fetch("/status/" + studentId);
-        const data = await res.json();
-        if (data.ok) {
-            isLocked = data.locked === true;
-            if (data.endTime) currentEndTime = Number(data.endTime);
-            refreshApp();
-        }
-    } catch (e) {
-        console.log("연결 확인 중...");
+  try {
+    const res = await fetch("/status/" + studentId)
+    const data = await res.json()
+
+    if (!data.ok) return
+
+    if (data.submitted === true) {
+      location.href = "/result/" + studentId
+      return
     }
+
+    if (data.started !== true) {
+      location.href = "/waiting/" + studentId
+      return
+    }
+
+    isLocked = data.locked === true
+    if (data.endTime) currentEndTime = Number(data.endTime)
+
+    refreshApp()
+  } catch (e) {}
 }
 
-// 5. 실행 스케줄러 (기존 setInterval 모두 무시하고 이것만 실행)
-setInterval(refreshApp, 1000); // 1초마다 화면 갱신
-setInterval(syncStatus, 3000); // 3초마다 서버 상태 동기화
+// ================================
+// 6. 저장
+// ================================
+async function manualSave() {
+  if (isLocked) return
 
-// 페이지 로드 시 즉시 실행
+  const res = await fetch("/save", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      studentId,
+      text: editor.value
+    })
+  })
+
+  const data = await res.json()
+
+  if (data.ok) {
+    lastSavedText = editor.value
+    showModal("임시저장 완료", "저장되었습니다.", [
+      { label: "확인", onClick: closeModal }
+    ])
+  }
+}
+
+async function autoSave() {
+  if (isLocked || autoSaveInFlight) return
+
+  const text = editor.value
+  if (text === lastSavedText) return
+
+  autoSaveInFlight = true
+
+  try {
+    const res = await fetch("/save", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ studentId, text })
+    })
+
+    const data = await res.json()
+    if (data.ok) lastSavedText = text
+  } catch (e) {}
+
+  autoSaveInFlight = false
+}
+
+// ================================
+// 7. 제출
+// ================================
+function submitWriting() {
+  if (isLocked) return
+
+  const chars = editor.value.replace(/\s/g, "").length
+
+  if (chars < minChars) {
+    showModal("제출 불가", `최소 ${minChars}자 이상 필요`, [
+      { label: "확인", onClick: closeModal }
+    ])
+    return
+  }
+
+  showModal("제출 확인", "제출하면 수정 불가", [
+    { label: "취소", onClick: closeModal },
+    { label: "제출", onClick: reallySubmit }
+  ])
+}
+
+async function reallySubmit() {
+  closeModal()
+
+  // 파일 다운로드
+  const now = new Date()
+  const dateStr = now.toISOString().slice(0, 10)
+
+  const fullContent =
+`${topic}
+${studentName} | ${dateStr}
+
+${editor.value}`
+
+  const blob = new Blob([fullContent])
+  const a = document.createElement("a")
+  a.href = URL.createObjectURL(blob)
+  a.download = `${topic}_${studentName}_${dateStr}.txt`
+  a.click()
+
+  // 서버 제출
+  const res = await fetch("/submit", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      studentId,
+      text: editor.value
+    })
+  })
+
+  const data = await res.json()
+
+  if (!data.ok) {
+    showModal("제출 실패", "오류 발생", [
+      { label: "확인", onClick: closeModal }
+    ])
+    return
+  }
+
+  showModal("제출 완료", "로그아웃됩니다.", [
+    {
+      label: "확인",
+      onClick: () => location.href = "/student-logout"
+    }
+  ])
+
+  setTimeout(() => {
+    location.href = "/student-logout"
+  }, 2000)
+}
+
+// ================================
+// 8. 다운로드
+// ================================
+function downloadTxt() {
+  const blob = new Blob([editor.value])
+  const a = document.createElement("a")
+  a.href = URL.createObjectURL(blob)
+  a.download = "writing.txt"
+  a.click()
+}
+
+// ================================
+// 9. 이벤트
+// ================================
+if (editor) editor.addEventListener("input", updateCount)
+
 document.addEventListener("DOMContentLoaded", () => {
-    refreshApp();
-    syncStatus();
-});
+  updateCount()
+  refreshApp()
+  syncStatus()
+})
 
-// 나머지 저장/제출 함수들은 기존 그대로 사용 (필요시 아래에 추가)
+// ================================
+// 10. 반복 실행
+// ================================
+setInterval(refreshApp, 1000)
+setInterval(syncStatus, 3000)
+setInterval(autoSave, 15000)
