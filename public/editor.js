@@ -267,3 +267,7 @@ document.addEventListener("DOMContentLoaded", () => {
 setInterval(refreshApp, 1000)
 setInterval(syncStatus, 3000)
 setInterval(autoSave, 15000)
+
+document.getElementById("submitBtn")?.addEventListener("click", submitWriting)
+document.getElementById("saveBtn")?.addEventListener("click", manualSave)
+document.getElementById("downloadBtn")?.addEventListener("click", downloadTxt)
